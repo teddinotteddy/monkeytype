@@ -2,7 +2,7 @@ name: PR Check
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, dev]
 
 jobs:
   build:
@@ -39,6 +39,10 @@ jobs:
               - 'backend/**/*.{js,ts}'
             anti-cheat:
               - 'backend/**/anticheat/**'
+
+      - name: Create stub firebase config
+        working-directory: ./frontend/src/scripts/constants
+        run: mv ./firebase-config-example.ts ./firebase-config-live.ts
 
       - name: Check Anti-cheat
         if: steps.filter.outputs.anti-cheat == 'true'

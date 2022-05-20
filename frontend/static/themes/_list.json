@@ -739,4 +739,24 @@
     "bgColor": "#003950",
     "mainColor": "#ffcefb"
   }
+  ,{
+    "name": "mexican",
+    "bgColor": "#cec176",
+    "mainColor": "#ffffff"
+  }
+  ,{
+    "name": "husqy",
+    "bgColor": "#000000",
+    "mainColor": "#c58aff"
+  }
+  ,{
+    "name": "peach_blossom",
+    "bgColor": "#292929",
+    "mainColor": "#e84a5f"
+  }
+  ,{
+    "name": "dino",
+    "bgColor": "#ffffff",
+    "mainColor": "#40d672"
+  }
 ]

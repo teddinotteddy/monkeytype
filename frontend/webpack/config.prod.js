@@ -3,7 +3,7 @@ const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const HtmlMinimizerPlugin = require("html-minimizer-webpack-plugin");
 const JsonMinimizerPlugin = require("json-minimizer-webpack-plugin");
 
-const BASE_CONFIGURATION = require("./config.base");
+const BASE_CONFIG = require("./config.base");
 
 function pad(numbers, maxLength, fillString) {
   return numbers.map((number) =>
@@ -11,7 +11,8 @@ function pad(numbers, maxLength, fillString) {
   );
 }
 
-const PRODUCTION_CONFIGURATION = {
+/** @type { import('webpack').Configuration } */
+const PRODUCTION_CONFIG = {
   mode: "production",
   module: {
     rules: [
@@ -51,20 +52,6 @@ const PRODUCTION_CONFIGURATION = {
           flags: "g",
         },
       },
-      {
-        test: /\.m?js$/,
-        exclude: /(node_modules)/,
-        use: {
-          loader: "babel-loader",
-          options: {
-            presets: ["@babel/preset-env"],
-            plugins: [
-              "@babel/plugin-transform-runtime",
-              "@babel/plugin-transform-modules-commonjs",
-            ],
-          },
-        },
-      },
     ],
   },
   optimization: {
@@ -78,4 +65,4 @@ const PRODUCTION_CONFIGURATION = {
   },
 };
 
-module.exports = merge(BASE_CONFIGURATION, PRODUCTION_CONFIGURATION);
+module.exports = merge(BASE_CONFIG, PRODUCTION_CONFIG);

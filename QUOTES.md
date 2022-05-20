@@ -7,14 +7,15 @@
 
 ### Forking Monkeytype
 
-First you will have to copy the Monkeytype repository also known as forking. Go to the [Monkeytype Repo](https://github.com/Miodec/monkeytype/) and then click the "fork" button.
+First you will have to copy the Monkeytype repository also known as forking. Go to the [Monkeytype Repo](https://github.com/monkeytypegame/monkeytype/) and then click the "fork" button.
 
 <img width="1552" alt="Screen Shot 2022-01-12 at 11 51 49 AM" src="https://user-images.githubusercontent.com/83455454/149194972-23343642-7a1f-4c0c-b5f2-36f4b39a2639.png">
 
 ## Creating Quotes
 
 After you forked the Monkeytype repository you can now add your quotes. (If you haven't already forked the repository, refer to this [section](#forking-monkeytype).) (Before continuing to the next step make sure the quote's language exists in Monkeytype) Add this code in at the end of the quotes `./frontend/static/quotes/[language].json`:
-``` 
+
+```
 {
     "text": "[quote]",
     "source": "[source]",
@@ -22,9 +23,10 @@ After you forked the Monkeytype repository you can now add your quotes. (If you 
     "length": [number of characters in quote]
 }
 ```
+
 (If the language does exist in Monkeytype, but there are no quotes for it create a new file for the language)
 
-### Committing Quotes 
+### Committing Quotes
 
 Once you have added your quotes(s), you now need to create a pull request to the main Monkeytype repository. Go to the branch where you created your languages on GitHub. Then make sure your branch is up to date. Once it is up to date, click "contribute".
 
@@ -37,4 +39,4 @@ Create a pull request:
 ## Quote Guidelines
 
 Make sure your quote(s) follows the quote guidelines.
-[Quote guidelines](https://github.com/Miodec/monkeytype/blob/master/CONTRIBUTING.md#quote-guidelines)
+[Quote guidelines](./CONTRIBUTING.md#quote-guidelines)

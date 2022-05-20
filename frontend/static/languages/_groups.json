@@ -8,7 +8,8 @@
       "english_10k",
       "english_25k",
       "english_450k",
-      "english_commonly_misspelled"
+      "english_commonly_misspelled",
+      "english_contractions"
     ]
   },
   {
@@ -36,7 +37,7 @@
   },
   {
     "name": "portuguese",
-    "languages": ["portuguese", "portuguese_3k"]
+    "languages": ["portuguese", "portuguese_3k", "portuguese_acentos_e_cedilha"]
   },
   {
     "name": "arabic",
@@ -51,6 +52,10 @@
       "italian_60k",
       "italian_280k"
     ]
+  },
+  {
+    "name": "latin",
+    "languages": ["latin"]
   },
   {
     "name": "afrikaans",
@@ -86,7 +91,11 @@
   },
   {
     "name": "indonesian",
-    "languages": ["indonesian", "indonesian_1k"]
+    "languages": ["indonesian", "indonesian_1k", "indonesian_10k"]
+  },
+  {
+    "name": "kurdish_central",
+    "languages": ["kurdish_central"]
   },
   {
     "name": "greek",
@@ -138,7 +147,7 @@
   },
   {
     "name": "hebrew",
-    "languages": ["hebrew"]
+    "languages": ["hebrew", "hebrew_1k", "hebrew_5k", "hebrew_10k"]
   },
   {
     "name": "icelandic",
@@ -278,8 +287,20 @@
     "languages": ["belarusian_1k"]
   },
   {
+    "name": "azerbaijani",
+    "languages": ["azerbaijani", "azerbaijani_1k"]
+  },
+  {
     "name": "malayalam",
     "languages": ["malayalam"]
+  },
+  {
+    "name": "sinhala",
+    "languages": ["sinhala"]
+  },
+  {
+    "name": "toki_pona",
+    "languages": ["toki_pona", "toki_pona_ku_suli", "toki_pona_ku_lili"]
   },
   {
     "name": "code",
@@ -289,6 +310,8 @@
       "code_csharp",
       "code_c++",
       "code_dart",
+      "code_brainfck",
+      "code_fsharp",
       "code_javascript",
       "code_javascript_1k",
       "code_html",
@@ -300,10 +323,14 @@
       "code_ruby",
       "code_r",
       "code_swift",
+      "code_scala",
       "code_bash",
       "code_lua",
       "code_luau",
-      "code_matlab"
+      "code_matlab",
+      "code_sql",
+      "code_perl",
+      "code_php"
     ]
   },
   {
@@ -311,10 +338,13 @@
     "languages": [
       "lojban_gismu",
       "lojban_cmavo",
-      "toki_pona",
       "pig_latin",
       "twitch_emotes",
       "git"
     ]
+  },
+  {
+    "name": "amharic",
+    "languages": ["amharic"]
   }
 ]

@@ -1,322 +1,206 @@
-import * as DB from "../db";
 import Config from "../config";
-import * as Misc from "../utils/misc";
 import format from "date-fns/format";
+import * as Misc from "../utils/misc";
 
-export function update(): void {
-  $(".pageAccount .timePbTable tbody").html(`
-  <tr>
-    <td>15</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-  </tr>
-  <tr>
-    <td>30</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-  </tr>
-  <tr>
-    <td>60</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-  </tr>
-  <tr>
-    <td>120</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-  </tr>
+function clearTables(isProfile: boolean): void {
+  const source = isProfile ? "Profile" : "Account";
+
+  const showAllButton = `<div  
+  class="showAllButton button"
+  data-balloon-pos="left"
+  aria-label="Show all personal bests"
+>
+  <i class="fas fa-ellipsis-v"></i>
+</div>`;
+
+  const htmlToShow = isProfile ? "" : showAllButton;
+
+  $(`.page${source} .profile .pbsWords`).html(`
+      <div class="group">
+      <div class="quick">
+        <div class="test">10 words</div>
+        <div class="wpm">-</div>
+        <div class="acc">-</div>
+      </div>
+    </div>
+    <div class="group">
+      <div class="quick">
+        <div class="test">25 words</div>
+        <div class="wpm">-</div>
+        <div class="acc">-</div>
+      </div>
+    </div>
+    <div class="group">
+      <div class="quick">
+        <div class="test">50 words</div>
+        <div class="wpm">-</div>
+        <div class="acc">-</div>
+      </div>
+    </div>
+    <div class="group">
+      <div class="quick">
+        <div class="test">100 words</div>
+        <div class="wpm">-</div>
+        <div class="acc">-</div>
+      </div>
+    </div>
+    ${htmlToShow}
   `);
-  $(".pageAccount .wordsPbTable tbody").html(`
-  <tr>
-    <td>10</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-  </tr>
-  <tr>
-    <td>25</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-  </tr>
-  <tr>
-    <td>50</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-  </tr>
-  <tr>
-    <td>100</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-    <td>-</td>
-  </tr>
+  $(`.page${source} .profile .pbsTime`).html(`
+      <div class="group">
+      <div class="quick">
+        <div class="test">15 seconds</div>
+        <div class="wpm">-</div>
+        <div class="acc">-</div>
+      </div>
+    </div>
+    <div class="group">
+      <div class="quick">
+        <div class="test">30 seconds</div>
+        <div class="wpm">-</div>
+        <div class="acc">-</div>
+      </div>
+    </div>
+    <div class="group">
+      <div class="quick">
+        <div class="test">60 seconds</div>
+        <div class="wpm">-</div>
+        <div class="acc">-</div>
+      </div>
+    </div>
+    <div class="group">
+      <div class="quick">
+        <div class="test">120 seconds</div>
+        <div class="wpm">-</div>
+        <div class="acc">-</div>
+      </div>
+    </div>
+    ${htmlToShow}
   `);
+}
 
-  if (Config.alwaysShowCPM) {
-    $(
-      ".pageAccount .timePbTable thead tr td:nth-child(2), .pageAccount .wordsPbTable thead tr td:nth-child(2)"
-    ).html('cpm<br><span class="sub">accuracy</span>');
-  } else {
-    $(
-      ".pageAccount .timePbTable thead tr td:nth-child(2), .pageAccount .wordsPbTable thead tr td:nth-child(2)"
-    ).html('wpm<br><span class="sub">accuracy</span>');
-  }
+export function update(
+  personalBests?: MonkeyTypes.PersonalBests,
+  isProfile = false
+): void {
+  clearTables(isProfile);
 
-  const pb = DB.getSnapshot().personalBests;
-  if (pb === undefined) return;
+  if (personalBests === undefined) return;
+  let text = "";
+
+  const source = isProfile ? "Profile" : "Account";
+
+  $(`.page${source} .profile .pbsTime`).html("");
+  $(`.page${source} .profile .pbsWords`).html("");
+
+  text = "";
+  [15, 30, 60, 120].forEach((mode2) => {
+    text += buildPbHtml(personalBests, "time", mode2);
+  });
+
+  const showAllButton = isProfile
+    ? ""
+    : `<div class="buttonGroup"><div
+      class="showAllButton button"
+      data-balloon-pos="left"
+      aria-label="Show all personal bests"
+    >
+      <i class="fas fa-ellipsis-v"></i>
+    </div></div>`;
+
+  $(`.page${source} .profile .pbsTime`).append(text + showAllButton);
+
+  text = "";
+  [10, 25, 50, 100].forEach((mode2) => {
+    text += buildPbHtml(personalBests, "words", mode2);
+  });
+
+  $(`.page${source} .profile .pbsWords`).append(text + showAllButton);
+}
+
+function buildPbHtml(
+  pbs: MonkeyTypes.PersonalBests,
+  mode: "time" | "words",
+  mode2: number
+): string {
+  let retval = "";
   let pbData;
-  let text;
-  let dateText = `-<br><span class="sub">-</span>`;
+  let dateText = "";
   const multiplier = Config.alwaysShowCPM ? 5 : 1;
+  const modeString = `${mode2} ${mode === "time" ? "seconds" : "words"}`;
+  const wpmCpm = Config.alwaysShowCPM ? "cpm" : "wpm";
+  try {
+    pbData = pbs[mode][mode2].sort((a, b) => b.wpm - a.wpm)[0];
+    const date = new Date(pbData.timestamp);
+    if (pbData.timestamp) {
+      dateText = format(date, "dd MMM yyyy");
+    }
 
-  text = "";
-  try {
-    pbData = pb.time[15].sort((a, b) => b.wpm - a.wpm)[0];
-    dateText = `-<br><span class="sub">-</span>`;
-    const date = new Date(pbData.timestamp);
-    if (pbData.timestamp) {
-      dateText =
-        format(date, "dd MMM yyyy") +
-        "<br><div class='sub'>" +
-        format(date, "HH:mm") +
-        "</div>";
+    let wpmString: number | string = pbData.wpm * multiplier;
+    if (Config.alwaysShowDecimalPlaces) {
+      wpmString = Misc.roundTo2(wpmString).toFixed(2);
+    } else {
+      wpmString = Math.round(wpmString);
     }
-    text += `<tr>
-      <td>15</td>
-      <td>${Misc.roundTo2(pbData.wpm * multiplier)}<br><span class="sub">${
-      pbData.acc === undefined ? "-" : pbData.acc + "%"
-    }</span></td>
-      <td>${Misc.roundTo2(pbData.raw * multiplier)}<br><span class="sub">${
-      pbData.consistency === undefined ? "-" : pbData.consistency + "%"
-    }</span></td>
-      <td>${dateText}</td>
-    </tr>`;
-  } catch (e) {
-    text += `<tr>
-      <td>15</td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-    </tr>`;
-  }
-  try {
-    pbData = pb.time[30].sort((a, b) => b.wpm - a.wpm)[0];
-    dateText = `-<br><span class="sub">-</span>`;
-    const date = new Date(pbData.timestamp);
-    if (pbData.timestamp) {
-      dateText =
-        format(date, "dd MMM yyyy") +
-        "<br><div class='sub'>" +
-        format(date, "HH:mm") +
-        "</div>";
-    }
-    text += `<tr>
-    <td>30</td>
-      <td>${Misc.roundTo2(pbData.wpm * multiplier)}<br><span class="sub">${
-      pbData.acc === undefined ? "-" : pbData.acc + "%"
-    }</span></td>
-      <td>${Misc.roundTo2(pbData.raw * multiplier)}<br><span class="sub">${
-      pbData.consistency === undefined ? "-" : pbData.consistency + "%"
-    }</span></td>
-      <td>${dateText}</td>
-    </tr>`;
-  } catch (e) {
-    text += `<tr>
-      <td>30</td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-    </tr>`;
-  }
-  try {
-    pbData = pb.time[60].sort((a, b) => b.wpm - a.wpm)[0];
-    dateText = `-<br><span class="sub">-</span>`;
-    const date = new Date(pbData.timestamp);
-    if (pbData.timestamp) {
-      dateText =
-        format(date, "dd MMM yyyy") +
-        "<br><div class='sub'>" +
-        format(date, "HH:mm") +
-        "</div>";
-    }
-    text += `<tr>
-      <td>60</td>
-      <td>${Misc.roundTo2(pbData.wpm * multiplier)}<br><span class="sub">${
-      pbData.acc === undefined ? "-" : pbData.acc + "%"
-    }</span></td>
-      <td>${Misc.roundTo2(pbData.raw * multiplier)}<br><span class="sub">${
-      pbData.consistency === undefined ? "-" : pbData.consistency + "%"
-    }</span></td>
-      <td>${dateText}</td>
-    </tr>`;
-  } catch (e) {
-    text += `<tr>
-      <td>60</td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-    </tr>`;
-  }
-  try {
-    pbData = pb.time[120].sort((a, b) => b.wpm - a.wpm)[0];
-    dateText = `-<br><span class="sub">-</span>`;
-    const date = new Date(pbData.timestamp);
-    if (pbData.timestamp) {
-      dateText =
-        format(date, "dd MMM yyyy") +
-        "<br><div class='sub'>" +
-        format(date, "HH:mm") +
-        "</div>";
-    }
-    text += `<tr>
-      <td>120</td>
-      <td>${Misc.roundTo2(pbData.wpm * multiplier)}<br><span class="sub">${
-      pbData.acc === undefined ? "-" : pbData.acc + "%"
-    }</span></td>
-      <td>${Misc.roundTo2(pbData.raw * multiplier)}<br><span class="sub">${
-      pbData.consistency === undefined ? "-" : pbData.consistency + "%"
-    }</span></td>
-      <td>${dateText}</td>
-    </tr>`;
-  } catch (e) {
-    text += `<tr>
-      <td>120</td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-    </tr>`;
-  }
-  $(".pageAccount .timePbTable tbody").html(text);
+    wpmString += ` ${wpmCpm}`;
 
-  text = "";
-  try {
-    pbData = pb.words[10].sort((a, b) => b.wpm - a.wpm)[0];
-    dateText = `-<br><span class="sub">-</span>`;
-    const date = new Date(pbData.timestamp);
-    if (pbData.timestamp) {
-      dateText =
-        format(date, "dd MMM yyyy") +
-        "<br><div class='sub'>" +
-        format(date, "HH:mm") +
-        "</div>";
+    let rawString: number | string = pbData.raw * multiplier;
+    if (Config.alwaysShowDecimalPlaces) {
+      rawString = Misc.roundTo2(rawString).toFixed(2);
+    } else {
+      rawString = Math.round(rawString);
     }
-    text += `<tr>
-      <td>10</td>
-      <td>${Misc.roundTo2(pbData.wpm * multiplier)}<br><span class="sub">${
-      pbData.acc === undefined ? "-" : pbData.acc + "%"
-    }</span></td>
-      <td>${Misc.roundTo2(pbData.raw * multiplier)}<br><span class="sub">${
-      pbData.consistency === undefined ? "-" : pbData.consistency + "%"
-    }</span></td>
-      <td>${dateText}</td>
-    </tr>`;
-  } catch (e) {
-    text += `<tr>
-      <td>10</td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-    </tr>`;
-  }
-  try {
-    pbData = pb.words[25].sort((a, b) => b.wpm - a.wpm)[0];
-    dateText = `-<br><span class="sub">-</span>`;
-    const date = new Date(pbData.timestamp);
-    if (pbData.timestamp) {
-      dateText =
-        format(date, "dd MMM yyyy") +
-        "<br><div class='sub'>" +
-        format(date, "HH:mm") +
-        "</div>";
+    rawString += ` raw`;
+
+    let accString: number | string = pbData.acc;
+    if (accString === undefined) {
+      accString = "-";
+    } else {
+      if (Config.alwaysShowDecimalPlaces) {
+        accString = Misc.roundTo2(accString).toFixed(2);
+      } else {
+        accString = Math.round(accString);
+      }
     }
-    text += `<tr>
-      <td>25</td>
-      <td>${Misc.roundTo2(pbData.wpm * multiplier)}<br><span class="sub">${
-      pbData.acc === undefined ? "-" : pbData.acc + "%"
-    }</span></td>
-      <td>${Misc.roundTo2(pbData.raw * multiplier)}<br><span class="sub">${
-      pbData.consistency === undefined ? "-" : pbData.consistency + "%"
-    }</span></td>
-      <td>${dateText}</td>
-    </tr>`;
-  } catch (e) {
-    text += `<tr>
-      <td>25</td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-    </tr>`;
-  }
-  try {
-    pbData = pb.words[50].sort((a, b) => b.wpm - a.wpm)[0];
-    dateText = `-<br><span class="sub">-</span>`;
-    const date = new Date(pbData.timestamp);
-    if (pbData.timestamp) {
-      dateText =
-        format(date, "dd MMM yyyy") +
-        "<br><div class='sub'>" +
-        format(date, "HH:mm") +
-        "</div>";
+    accString += ` acc`;
+
+    let conString: number | string = pbData.consistency;
+    if (conString === undefined) {
+      conString = "-";
+    } else {
+      if (Config.alwaysShowDecimalPlaces) {
+        conString = Misc.roundTo2(conString).toFixed(2);
+      } else {
+        conString = Math.round(conString);
+      }
     }
-    text += `<tr>
-      <td>50</td>
-      <td>${Misc.roundTo2(pbData.wpm * multiplier)}<br><span class="sub">${
-      pbData.acc === undefined ? "-" : pbData.acc + "%"
-    }</span></td>
-      <td>${Misc.roundTo2(pbData.raw * multiplier)}<br><span class="sub">${
-      pbData.consistency === undefined ? "-" : pbData.consistency + "%"
-    }</span></td>
-      <td>${dateText}</td>
-    </tr>`;
+    conString += ` con`;
+
+    retval = `<div class="quick">
+      <div class="test">${modeString}</div>
+      <div class="wpm">${Math.round(pbData.wpm * multiplier)}</div>
+      <div class="acc">${
+        pbData.acc === undefined ? "-" : Math.floor(pbData.acc) + "%"
+      }</div>
+    </div>
+    <div class="fullTest">
+      <div>${modeString}</div>
+      <div>${wpmString}</div>
+      <div>${rawString}</div>
+      <div>${accString}</div>
+      <div>${conString}</div>
+      <div>${dateText}</div>
+    </div>`;
   } catch (e) {
-    text += `<tr>
-      <td>50</td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-    </tr>`;
+    retval = `<div class="quick">
+    <div class="test">${modeString}</div>
+    <div class="wpm">-</div>
+    <div class="acc">-</div>
+  </div>`;
   }
-  try {
-    pbData = pb.words[100].sort((a, b) => b.wpm - a.wpm)[0];
-    dateText = `-<br><span class="sub">-</span>`;
-    const date = new Date(pbData.timestamp);
-    if (pbData.timestamp) {
-      dateText =
-        format(date, "dd MMM yyyy") +
-        "<br><div class='sub'>" +
-        format(date, "HH:mm") +
-        "</div>";
-    }
-    text += `<tr>
-      <td>100</td>
-      <td>${Misc.roundTo2(pbData.wpm * multiplier)}<br><span class="sub">${
-      pbData.acc === undefined ? "-" : pbData.acc + "%"
-    }</span></td>
-      <td>${Misc.roundTo2(pbData.raw * multiplier)}<br><span class="sub">${
-      pbData.consistency === undefined ? "-" : pbData.consistency + "%"
-    }</span></td>
-      <td>${dateText}</td>
-    </tr>`;
-  } catch (e) {
-    text += `<tr>
-      <td>100</td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-      <td>-<br><span class="sub">-</span></td>
-    </tr>`;
-  }
-  $(".pageAccount .wordsPbTable tbody").html(text);
+  return `
+  <div class="group">
+  ${retval}
+  </div>
+  `;
 }

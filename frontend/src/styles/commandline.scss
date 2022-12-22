@@ -7,12 +7,15 @@
   top: 0;
   z-index: 1000;
   display: grid;
-  justify-content: center;
+  justify-items: center;
   align-items: start;
-  padding: 5rem 0;
+  padding: 5rem 2rem;
+  grid-template-columns: 1fr;
+  transition: background 0.125s;
 
   #commandInput {
-    width: 700px;
+    max-width: 700px;
+    width: 100%;
     background: var(--bg-color);
     border-radius: var(--roundness);
 
@@ -37,9 +40,12 @@
   }
 
   #commandLine {
-    width: 700px;
+    max-width: 600px;
+    width: 100%;
     background: var(--bg-color);
     border-radius: var(--roundness);
+    outline: 0.25rem solid transparent;
+    transition: outline 0.125s;
 
     .searchicon {
       color: var(--sub-color);
@@ -127,6 +133,13 @@
         //   cursor: pointer;
         // }
       }
+    }
+  }
+
+  &.noBackground {
+    background: none;
+    #commandLine {
+      outline: 0.25rem solid var(--sub-alt-color);
     }
   }
 }

@@ -27,7 +27,7 @@ const CONFIG_SCHEMA = joi.object({
   showLiveWpm: joi.boolean(),
   showTimerProgress: joi.boolean(),
   smoothCaret: joi.boolean(),
-  quickTab: joi.boolean(),
+  quickRestart: joi.string().valid("off", "tab", "esc"),
   punctuation: joi.boolean(),
   numbers: joi.boolean(),
   words: joi.number().min(0),
@@ -35,7 +35,10 @@ const CONFIG_SCHEMA = joi.object({
   mode: joi.string().valid("time", "words", "quote", "zen", "custom"),
   quoteLength: joi.array().items(joi.number()),
   language: joi.string(),
-  fontSize: joi.string().valid("1", "125", "15", "2", "3", "4"),
+  fontSize: joi.alternatives().try(
+    joi.string().valid("1", "125", "15", "2", "3", "4"), //remove after a week
+    joi.number().min(0)
+  ),
   freedomMode: joi.boolean(),
   difficulty: joi.string().valid("normal", "expert", "master"),
   blindMode: joi.boolean(),
@@ -64,6 +67,7 @@ const CONFIG_SCHEMA = joi.object({
     .string()
     .valid("lowercase", "uppercase", "blank", "dynamic"),
   keymapLayout: joi.string().valid(),
+  keymapShowTopRow: joi.string().valid("always", "layout", "never"),
   fontFamily: joi.string(),
   smoothLineScroll: joi.boolean(),
   alwaysShowDecimalPlaces: joi.boolean(),
@@ -71,12 +75,15 @@ const CONFIG_SCHEMA = joi.object({
   singleListCommandLine: joi.string().valid("manual", "on"),
   capsLockWarning: joi.boolean(),
   playSoundOnError: joi.boolean(),
-  playSoundOnClick: joi.string().valid("off", ..._.range(1, 8).map(_.toString)),
+  playSoundOnClick: joi
+    .string()
+    .valid("off", ..._.range(1, 12).map(_.toString)),
   soundVolume: joi.string().valid("0.1", "0.5", "1.0"),
   startGraphsAtZero: joi.boolean(),
-  swapEscAndTab: joi.boolean(),
   showOutOfFocusWarning: joi.boolean(),
-  paceCaret: joi.string().valid("off", "average", "pb", "custom"),
+  paceCaret: joi
+    .string()
+    .valid("off", "average", "pb", "last", "daily", "custom"),
   paceCaretCustomSpeed: joi.number().min(0),
   repeatedPace: joi.boolean(),
   pageWidth: joi.string().valid("100", "125", "150", "200", "max"),
@@ -88,6 +95,7 @@ const CONFIG_SCHEMA = joi.object({
   tapeMode: joi.string().valid("off", "letter", "word"),
   alwaysShowCPM: joi.boolean(),
   enableAds: joi.string().valid("off", "on", "max"),
+  ads: joi.string().valid("off", "result", "on", "sellout"),
   hideExtraLetters: joi.boolean(),
   strictSpace: joi.boolean(),
   minAcc: joi.string().valid("off", "custom"),

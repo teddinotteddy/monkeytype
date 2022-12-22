@@ -71,7 +71,6 @@
 
         .fas {
           margin-right: 0rem;
-          vertical-align: sub;
         }
       }
     }
@@ -193,8 +192,16 @@
         color: var(--main-color);
       }
 
-      #unlinkDiscordButton {
-        margin: 0.25rem auto 0 auto;
+      #discordButtonGroup {
+        display: grid;
+        grid-auto-flow: column;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+
+      #unlinkDiscordButton,
+      #updateDiscordAvatarButton {
+        margin: 0.5rem auto 0 auto;
         font-size: 0.75rem;
         line-height: 0.7rem;
       }
@@ -225,10 +232,6 @@
         grid-template-columns: 7fr 1fr 1fr;
         margin-bottom: 0.5rem;
       }
-    }
-
-    &.fontSize .buttons {
-      grid-template-columns: 1fr 1fr 1fr 1fr;
     }
 
     &.themes {

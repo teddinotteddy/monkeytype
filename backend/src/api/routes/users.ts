@@ -2,10 +2,15 @@ import joi from "joi";
 import { authenticateRequest } from "../../middlewares/auth";
 import { Router } from "express";
 import * as UserController from "../controllers/user";
-import { asyncHandler, validateRequest } from "../../middlewares/api-utils";
+import {
+  asyncHandler,
+  validateRequest,
+  validateConfiguration,
+} from "../../middlewares/api-utils";
 import * as RateLimit from "../../middlewares/rate-limit";
-import apeRateLimit from "../../middlewares/ape-rate-limit";
-import { isUsernameValid } from "../../utils/validation";
+import { withApeRateLimiter } from "../../middlewares/ape-rate-limit";
+import { containsProfanity, isUsernameValid } from "../../utils/validation";
+import filterSchema from "../schemas/filter-schema";
 
 const router = Router();
 
@@ -63,13 +68,21 @@ const usernameValidation = joi
   .string()
   .required()
   .custom((value, helpers) => {
-    return isUsernameValid(value)
-      ? value
-      : helpers.error("string.pattern.base");
+    if (containsProfanity(value)) {
+      return helpers.error("string.profanity");
+    }
+
+    if (!isUsernameValid(value)) {
+      return helpers.error("string.pattern.base");
+    }
+
+    return value;
   })
   .messages({
+    "string.profanity":
+      "The username contains profanity. If you believe this is a mistake, please contact us ",
     "string.pattern.base":
-      "Username invalid. Name cannot use special characters or contain more than 16 characters. Can include _ . and -",
+      "Username invalid. Name cannot use special characters or contain more than 16 characters. Can include _ . and - ",
   });
 
 const languageSchema = joi.string().min(1).required();
@@ -77,20 +90,27 @@ const quoteIdSchema = joi.string().min(1).max(5).regex(/\d+/).required();
 
 router.get(
   "/",
-  RateLimit.userGet,
   authenticateRequest(),
+  RateLimit.userGet,
   asyncHandler(UserController.getUser)
 );
 
 router.post(
   "/signup",
-  RateLimit.userSignup,
+  validateConfiguration({
+    criteria: (configuration) => {
+      return configuration.users.signUp;
+    },
+    invalidMessage: "Sign up is temporarily disabled",
+  }),
   authenticateRequest(),
+  RateLimit.userSignup,
   validateRequest({
     body: {
       email: joi.string().email(),
       name: usernameValidation,
       uid: joi.string(),
+      captcha: joi.string().required(),
     },
   }),
   asyncHandler(UserController.createNewUser)
@@ -109,15 +129,28 @@ router.get(
 
 router.delete(
   "/",
+  authenticateRequest({
+    requireFreshToken: true,
+  }),
   RateLimit.userDelete,
-  authenticateRequest(),
   asyncHandler(UserController.deleteUser)
 );
 
 router.patch(
+  "/reset",
+  authenticateRequest({
+    requireFreshToken: true,
+  }),
+  RateLimit.userReset,
+  asyncHandler(UserController.resetUser)
+);
+
+router.patch(
   "/name",
+  authenticateRequest({
+    requireFreshToken: true,
+  }),
   RateLimit.userUpdateName,
-  authenticateRequest(),
   validateRequest({
     body: {
       name: usernameValidation,
@@ -128,8 +161,8 @@ router.patch(
 
 router.patch(
   "/leaderboardMemory",
-  RateLimit.userUpdateLBMemory,
   authenticateRequest(),
+  RateLimit.userUpdateLBMemory,
   validateRequest({
     body: {
       mode: joi
@@ -146,8 +179,10 @@ router.patch(
 
 router.patch(
   "/email",
+  authenticateRequest({
+    requireFreshToken: true,
+  }),
   RateLimit.userUpdateEmail,
-  authenticateRequest(),
   validateRequest({
     body: {
       newEmail: joi.string().email().required(),
@@ -159,22 +194,55 @@ router.patch(
 
 router.delete(
   "/personalBests",
+  authenticateRequest({
+    requireFreshToken: true,
+  }),
   RateLimit.userClearPB,
-  authenticateRequest(),
   asyncHandler(UserController.clearPb)
+);
+
+const requireFilterPresetsEnabled = validateConfiguration({
+  criteria: (configuration) => {
+    return configuration.results.filterPresets.enabled;
+  },
+  invalidMessage: "Result filter presets are not available at this time.",
+});
+
+router.post(
+  "/resultFilterPresets",
+  requireFilterPresetsEnabled,
+  authenticateRequest(),
+  RateLimit.userCustomFilterAdd,
+  validateRequest({
+    body: filterSchema,
+  }),
+  asyncHandler(UserController.addResultFilterPreset)
+);
+
+router.delete(
+  "/resultFilterPresets/:presetId",
+  requireFilterPresetsEnabled,
+  authenticateRequest(),
+  RateLimit.userCustomFilterRemove,
+  validateRequest({
+    params: {
+      presetId: joi.string().required(),
+    },
+  }),
+  asyncHandler(UserController.removeResultFilterPreset)
 );
 
 router.get(
   "/tags",
-  RateLimit.userTagsGet,
   authenticateRequest(),
+  RateLimit.userTagsGet,
   asyncHandler(UserController.getTags)
 );
 
 router.post(
   "/tags",
-  RateLimit.userTagsAdd,
   authenticateRequest(),
+  RateLimit.userTagsAdd,
   validateRequest({
     body: {
       tagName: tagNameValidation,
@@ -185,8 +253,8 @@ router.post(
 
 router.patch(
   "/tags",
-  RateLimit.userTagsEdit,
   authenticateRequest(),
+  RateLimit.userTagsEdit,
   validateRequest({
     body: {
       tagId: joi.string().required(),
@@ -198,8 +266,8 @@ router.patch(
 
 router.delete(
   "/tags/:tagId",
-  RateLimit.userTagsRemove,
   authenticateRequest(),
+  RateLimit.userTagsRemove,
   validateRequest({
     params: {
       tagId: joi.string().required(),
@@ -210,8 +278,8 @@ router.delete(
 
 router.delete(
   "/tags/:tagId/personalBest",
-  RateLimit.userTagsClearPB,
   authenticateRequest(),
+  RateLimit.userTagsClearPB,
   validateRequest({
     params: {
       tagId: joi.string().required(),
@@ -222,15 +290,15 @@ router.delete(
 
 router.get(
   "/customThemes",
-  RateLimit.userCustomThemeGet,
   authenticateRequest(),
+  RateLimit.userCustomThemeGet,
   asyncHandler(UserController.getCustomThemes)
 );
 
 router.post(
   "/customThemes",
-  RateLimit.userCustomThemeAdd,
   authenticateRequest(),
+  RateLimit.userCustomThemeAdd,
   validateRequest({
     body: {
       name: customThemeNameValidation,
@@ -242,8 +310,8 @@ router.post(
 
 router.delete(
   "/customThemes",
-  RateLimit.userCustomThemeRemove,
   authenticateRequest(),
+  RateLimit.userCustomThemeRemove,
   validateRequest({
     body: {
       themeId: customThemeIdValidation,
@@ -254,8 +322,8 @@ router.delete(
 
 router.patch(
   "/customThemes",
-  RateLimit.userCustomThemeEdit,
   authenticateRequest(),
+  RateLimit.userCustomThemeEdit,
   validateRequest({
     body: {
       themeId: customThemeIdValidation,
@@ -268,17 +336,31 @@ router.patch(
   asyncHandler(UserController.editCustomTheme)
 );
 
+const requireDiscordIntegrationEnabled = validateConfiguration({
+  criteria: (configuration) => {
+    return configuration.users.discordIntegration.enabled;
+  },
+  invalidMessage: "Discord integration is not available at this time",
+});
+
+router.get(
+  "/discord/oauth",
+  requireDiscordIntegrationEnabled,
+  authenticateRequest(),
+  RateLimit.userDiscordLink,
+  asyncHandler(UserController.getOauthLink)
+);
+
 router.post(
   "/discord/link",
-  RateLimit.userDiscordLink,
+  requireDiscordIntegrationEnabled,
   authenticateRequest(),
+  RateLimit.userDiscordLink,
   validateRequest({
     body: {
-      data: joi.object({
-        tokenType: joi.string().required(),
-        accessToken: joi.string().required(),
-        uid: joi.string(),
-      }),
+      tokenType: joi.string().required(),
+      accessToken: joi.string().required(),
+      state: joi.string().length(20).required(),
     },
   }),
   asyncHandler(UserController.linkDiscord)
@@ -286,18 +368,17 @@ router.post(
 
 router.post(
   "/discord/unlink",
-  RateLimit.userDiscordUnlink,
   authenticateRequest(),
+  RateLimit.userDiscordUnlink,
   asyncHandler(UserController.unlinkDiscord)
 );
 
 router.get(
   "/personalBests",
-  RateLimit.userGet,
   authenticateRequest({
     acceptApeKeys: true,
   }),
-  apeRateLimit,
+  withApeRateLimiter(RateLimit.userGet),
   validateRequest({
     query: {
       mode: joi.string().required(),
@@ -309,25 +390,24 @@ router.get(
 
 router.get(
   "/stats",
-  RateLimit.userGet,
   authenticateRequest({
     acceptApeKeys: true,
   }),
-  apeRateLimit,
+  withApeRateLimiter(RateLimit.userGet),
   asyncHandler(UserController.getStats)
 );
 
 router.get(
   "/favoriteQuotes",
-  RateLimit.quoteFavoriteGet,
   authenticateRequest(),
+  RateLimit.quoteFavoriteGet,
   asyncHandler(UserController.getFavoriteQuotes)
 );
 
 router.post(
   "/favoriteQuotes",
-  RateLimit.quoteFavoritePost,
   authenticateRequest(),
+  RateLimit.quoteFavoritePost,
   validateRequest({
     body: {
       language: languageSchema,
@@ -339,8 +419,8 @@ router.post(
 
 router.delete(
   "/favoriteQuotes",
-  RateLimit.quoteFavoriteDelete,
   authenticateRequest(),
+  RateLimit.quoteFavoriteDelete,
   validateRequest({
     body: {
       language: languageSchema,
@@ -348,6 +428,106 @@ router.delete(
     },
   }),
   asyncHandler(UserController.removeFavoriteQuote)
+);
+
+const requireProfilesEnabled = validateConfiguration({
+  criteria: (configuration) => {
+    return configuration.users.profiles.enabled;
+  },
+  invalidMessage: "Profiles are not available at this time",
+});
+
+router.get(
+  "/:uidOrName/profile",
+  requireProfilesEnabled,
+  authenticateRequest({
+    isPublic: true,
+    acceptApeKeys: true,
+  }),
+  withApeRateLimiter(RateLimit.userProfileGet),
+  validateRequest({
+    params: {
+      uidOrName: joi.string().required(),
+    },
+    query: {
+      isUid: joi.string().allow(""),
+    },
+  }),
+  asyncHandler(UserController.getProfile)
+);
+
+const profileDetailsBase = joi
+  .string()
+  .allow("")
+  .custom((value, helpers) => {
+    if (containsProfanity(value)) {
+      return helpers.error("string.profanity");
+    }
+
+    return value;
+  })
+  .messages({
+    "string.profanity": "Profanity detected. Please remove it.",
+  });
+
+router.patch(
+  "/profile",
+  requireProfilesEnabled,
+  authenticateRequest(),
+  RateLimit.userProfileUpdate,
+  validateRequest({
+    body: {
+      bio: profileDetailsBase.max(250),
+      keyboard: profileDetailsBase.max(75),
+      selectedBadgeId: joi.number(),
+      socialProfiles: joi.object({
+        twitter: profileDetailsBase.regex(/^[0-9a-zA-Z_.-]+$/).max(20),
+        github: profileDetailsBase.regex(/^[0-9a-zA-Z_.-]+$/).max(39),
+        website: profileDetailsBase
+          .uri({
+            scheme: "https",
+            domain: {
+              tlds: {
+                allow: true,
+              },
+            },
+          })
+          .max(200),
+      }),
+    },
+  }),
+  asyncHandler(UserController.updateProfile)
+);
+
+const mailIdSchema = joi.array().items(joi.string().guid()).min(1).default([]);
+
+const requireInboxEnabled = validateConfiguration({
+  criteria: (configuration) => {
+    return configuration.users.inbox.enabled;
+  },
+  invalidMessage: "Your inbox is not available at this time.",
+});
+
+router.get(
+  "/inbox",
+  requireInboxEnabled,
+  authenticateRequest(),
+  RateLimit.userMailGet,
+  asyncHandler(UserController.getInbox)
+);
+
+router.patch(
+  "/inbox",
+  requireInboxEnabled,
+  authenticateRequest(),
+  RateLimit.userMailUpdate,
+  validateRequest({
+    body: {
+      mailIdsToDelete: mailIdSchema,
+      mailIdsToMarkRead: mailIdSchema,
+    },
+  }),
+  asyncHandler(UserController.updateInbox)
 );
 
 export default router;

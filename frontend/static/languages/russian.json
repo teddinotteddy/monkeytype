@@ -1,7 +1,7 @@
 {
   "name": "russian",
   "leftToRight": true,
-  "noLazyMode": true,
+  "noLazyMode": false,
   "bcp47": "ru-RU",
   "words": [
     "о",
@@ -71,7 +71,6 @@
     "отец",
     "друг",
     "сила",
-    "дело",
     "если",
     "жить",
     "день",

@@ -22,6 +22,12 @@ const result = new Counter({
   ],
 });
 
+const dailyLb = new Counter({
+  name: "daily_leaderboard_update_total",
+  help: "Counts daily leaderboard updates",
+  labelNames: ["mode", "mode2", "language"],
+});
+
 const resultLanguage = new Counter({
   name: "result_language_total",
   help: "Counts result langauge",
@@ -145,6 +151,14 @@ export function incrementResult(
   resultDuration.observe(res.testDuration);
 }
 
+export function incrementDailyLeaderboard(
+  mode: string,
+  mode2: string,
+  language: string
+): void {
+  dailyLb.inc({ mode, mode2, language });
+}
+
 const clientVersionsCounter = new Counter({
   name: "api_client_versions",
   help: "Records frequency of client versions",
@@ -163,4 +177,93 @@ const serverVersionCounter = new Counter({
 
 export function recordServerVersion(serverVersion: string): void {
   serverVersionCounter.inc({ version: serverVersion });
+}
+
+const authTime = new Histogram({
+  name: "api_request_auth_time",
+  help: "Time spent authenticating",
+  labelNames: ["type", "status", "path"],
+  buckets: [
+    100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1500, 2000, 2500, 3000,
+  ],
+});
+
+export function recordAuthTime(
+  type: string,
+  status: "success" | "failure",
+  time: number,
+  req: MonkeyTypes.Request
+): void {
+  const reqPath = req.baseUrl + req.route.path;
+
+  let normalizedPath = "/";
+  if (reqPath !== "/") {
+    normalizedPath = reqPath.endsWith("/") ? reqPath.slice(0, -1) : reqPath;
+  }
+
+  const pathNoGet = normalizedPath.replace(/\?.*/, "");
+
+  authTime.observe({ type, status, path: pathNoGet }, time);
+}
+
+const requestCountry = new Counter({
+  name: "api_request_country",
+  help: "Country of request",
+  labelNames: ["path", "country"],
+});
+
+export function recordRequestCountry(
+  country: string,
+  req: MonkeyTypes.Request
+): void {
+  const reqPath = req.baseUrl + req.route.path;
+
+  let normalizedPath = "/";
+  if (reqPath !== "/") {
+    normalizedPath = reqPath.endsWith("/") ? reqPath.slice(0, -1) : reqPath;
+  }
+
+  const pathNoGet = normalizedPath.replace(/\?.*/, "");
+
+  requestCountry.inc({ path: pathNoGet, country });
+}
+
+const tokenCacheAccess = new Counter({
+  name: "api_token_cache_access",
+  help: "Token cache access",
+  labelNames: ["status"],
+});
+
+export function recordTokenCacheAccess(
+  status: "hit" | "miss" | "hit_expired"
+): void {
+  tokenCacheAccess.inc({ status });
+}
+
+const tokenCacheSize = new Gauge({
+  name: "api_token_cache_size",
+  help: "Token cache size",
+});
+
+export function setTokenCacheSize(size: number): void {
+  tokenCacheSize.set(size);
+}
+
+const tokenCacheLength = new Gauge({
+  name: "api_token_cache_length",
+  help: "Token cache length",
+});
+
+export function setTokenCacheLength(length: number): void {
+  tokenCacheLength.set(length);
+}
+
+const uidRequestCount = new Counter({
+  name: "user_request_count",
+  help: "Request count per uid",
+  labelNames: ["uid"],
+});
+
+export function recordRequestForUid(uid: string): void {
+  uidRequestCount.inc({ uid });
 }

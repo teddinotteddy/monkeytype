@@ -68,7 +68,7 @@
       "id": 10
     },
     {
-      "text": "Man kann einen Menschen nichts lehren, man kann ihm nur helfen, es in sich selbst zu entdecken.",
+      "text": "Man kann einem Menschen nichts lehren, man kann ihm nur helfen, es in sich selbst zu entdecken.",
       "source": "Galileo Galilei",
       "length": 95,
       "id": 11
@@ -578,7 +578,7 @@
       "id": 96
     },
     {
-      "text": "Für Versammlungen unter freien Himmel kann dieses Recht durch Gesetz oder auf Grund eines Gesetzes beschränkt werden.",
+      "text": "Für Versammlungen unter freiem Himmel kann dieses Recht durch Gesetz oder auf Grund eines Gesetzes beschränkt werden.",
       "source": "Grundgesetz Artikel 8.2",
       "length": 117,
       "id": 97
@@ -764,9 +764,9 @@
       "id": 127
     },
     {
-      "text": "Die Macht ist keine Fähigkeit, die man besitzt. Es geht nicht darum, Steine hochzuheben. Es ist ein Energiefeld zwischen allen Dingen - eine Spannung, oder ein Gleichgewicht, dass die Galaxis zusammenhält.",
+      "text": "Die Macht ist keine Fähigkeit, die man besitzt. Es geht nicht darum, Steine hochzuheben. Es ist ein Energiefeld zwischen allen Dingen - eine Spannung, oder ein Gleichgewicht, das die Galaxis zusammenhält.",
       "source": "Star Wars Episode 8 – Die letzten Jedi",
-      "length": 205,
+      "length": 204,
       "id": 128
     },
     {
@@ -872,9 +872,9 @@
       "id": 146
     },
     {
-      "text": "Du magst sein, wer du willst, magst machen, was du willst, aber wenn du dir etwas unbedingt wünscht, dann weil dieser Wunsch in der Seele des Universums geboren wurde. Er ist dein Auftrag auf der Erde.",
+      "text": "Du magst sein, wer du willst, magst machen, was du willst, aber wenn du dir etwas unbedingt wünschst, dann weil dieser Wunsch in der Seele des Universums geboren wurde. Er ist dein Auftrag auf der Erde.",
       "source": "Der Alchimist",
-      "length": 201,
+      "length": 202,
       "id": 147
     },
     {
@@ -987,7 +987,7 @@
     },
     {
       "text": "Ich weiß, dass Ehrlichkeit und Gerechtigkeitssinn die einzigen zuverlässigen Grundlagen von Wohlstand und Ansehen sind.",
-      "source": " Napoleon Hill - Denke nach und werde reich",
+      "source": "Napoleon Hill - Denke nach und werde reich",
       "length": 119,
       "id": 166
     },
@@ -1022,7 +1022,7 @@
       "id": 171
     },
     {
-      "text": "\"Warum sagst du immer wieder Dingsbums?\" ,wandte sich Rincewind an den Vogel. \"Begrenzter Dingsbums\", krächzte der Papagei. \"Dingsda. Soundso. Du weißt schon. Enthält Wörter.\"",
+      "text": "\"Warum sagst du immer wieder Dingsbums?\", wandte sich Rincewind an den Vogel. \"Begrenzter Dingsbums\", krächzte der Papagei. \"Dingsda. Soundso. Du weißt schon. Enthält Wörter.\"",
       "source": "Terry Pratchett - Eric",
       "length": 175,
       "id": 172
@@ -2108,16 +2108,10 @@
       "id": 353
     },
     {
-      "text": "Wenn ich seinen Namen flüstere, spüre ich Scherben im Mund. Wenn ich sein Bild vor mich befehlen, legt sich Eis auf meine Gedanken. Wenn ich mir vorstelle, ihn zu streicheln, öffnen Skalpelle mir Finger und Hände.",
+      "text": "Wenn ich seinen Namen flüstere, spüre ich Scherben im Mund. Wenn ich sein Bild vor mich befehle, legt sich Eis auf meine Gedanken. Wenn ich mir vorstelle, ihn zu streicheln, öffnen Skalpelle mir Finger und Hände.",
       "source": "Die Mitte der Welt",
-      "length": 213,
+      "length": 212,
       "id": 354
-    },
-    {
-      "text": "Eine Rose kann niemals ohne Dornen sein.",
-      "source": "Unbekannt",
-      "length": 40,
-      "id": 355
     },
     {
       "text": "Man lernt nichts aus Erfolgen; man lernt nichts aus Auszeichnungen; man lernt nichts aus Ruhm; man lernt nur durch Wunden und Narben, Fehler und Versagen.",
@@ -2252,14 +2246,14 @@
       "id": 377
     },
     {
-      "text": "Lassen Sie mich nur eins sagen: Rambo ist der beste Frontveteran, den ich kenne. Eine fehlerfreie Kampfmaschine mit nur einem Gedanken, einen Krieg zu gewinnen den andere schon verloren haben. Und wenn gewinnen sterben heißt, dann würde er auch das, ohne nachzudenken und ohne Angst.",
+      "text": "Lassen Sie mich nur eins sagen: Rambo ist der beste Frontveteran, den ich kenne. Eine fehlerfreie Kampfmaschine mit nur einem Gedanken, einen Krieg zu gewinnen, den andere schon verloren haben. Und wenn gewinnen sterben heißt, dann würde er auch das, ohne nachzudenken und ohne Angst.",
       "source": "Rambo – II",
-      "length": 283,
+      "length": 284,
       "id": 378
     },
     {
       "text": "Besser jetzt die Möglichkeiten in Betracht ziehen als in zehn Jahren, wenn das Leben die Wahl eventuell begrenzt.",
-      "source": "Hich School Musical",
+      "source": "High School Musical",
       "length": 113,
       "id": 379
     },
@@ -2396,9 +2390,9 @@
       "id": 402
     },
     {
-      "text": "Wie soll man auf wenigen Seiten ein Leben in seiner ganzen Wahrhaftigkeit schildern? Vor allem jenes andere Leben, das wir jenseits dessen führten, was ich in diesem Tagebuch niederzuschreiben vermochte? Wie soll ich Bilanz ziehen? Die ganzen Jahre über sah ich ihn in diesen Momenten, wenn ich am Ende einer Schlacht dastand und inständig hoffte, dass er nicht gefallen war. Dann die Freude, ihn wiederzusehen, wenn er im Feld über den verstümmelten, dampfenden Körpern seiner Gegner stand und das Schwert triumphierend in meine Richtung reckte, ein Gruß, den ich erwiderte. Ich erinnerte mich auch noch daran, wie wir Seite an Seite dastanden, als die Horde bei Tharos auf uns zustürmte. All meine Kameraden und der, den ich am meisten liebte, waren bereit, sich ihnen zu stellen. An die Ruhe, die in diesem Moment von ihm ausging, als beobachte er einen Sonnenuntergang und nicht das Ende der Welt. Seine Ruhe gab mir den Glauben, das wir es schaffen würden. Es fällt mir schwer, mich an eine Zeit zu erinnern, in der er nicht bei mir war. Ich kann all diese Empfindungen nicht richtig zu Papier bringen. Ich wünschte nur, er wäre jetzt hier, das ist alles. Wünschte, er würde, nun da ich sterbe, ein letztes Mal meine Hand halten.",
+      "text": "Wie soll man auf wenigen Seiten ein Leben in seiner ganzen Wahrhaftigkeit schildern? Vor allem jenes andere Leben, das wir jenseits dessen führten, was ich in diesem Tagebuch niederzuschreiben vermochte? Wie soll ich Bilanz ziehen? Die ganzen Jahre über sah ich ihn in diesen Momenten, wenn ich am Ende einer Schlacht dastand und inständig hoffte, dass er nicht gefallen war. Dann die Freude, ihn wiederzusehen, wenn er im Feld über den verstümmelten, dampfenden Körpern seiner Gegner stand und das Schwert triumphierend in meine Richtung reckte, ein Gruß, den ich erwiderte. Ich erinnerte mich auch noch daran, wie wir Seite an Seite dastanden, als die Horde bei Tharos auf uns zustürmte. All meine Kameraden und der, den ich am meisten liebte, waren bereit, sich ihnen zu stellen. An die Ruhe, die in diesem Moment von ihm ausging, als beobachte er einen Sonnenuntergang und nicht das Ende der Welt. Seine Ruhe gab mir den Glauben, dass wir es schaffen würden. Es fällt mir schwer, mich an eine Zeit zu erinnern, in der er nicht bei mir war. Ich kann all diese Empfindungen nicht richtig zu Papier bringen. Ich wünschte nur, er wäre jetzt hier, das ist alles. Wünschte, er würde, nun da ich sterbe, ein letztes Mal meine Hand halten.",
       "source": "Schwarzer Sold",
-      "length": 1234,
+      "length": 1235,
       "id": 403
     },
     {
@@ -2694,12 +2688,6 @@
       "source": "Die Känguru Chroniken – Die Känguru-Apokryphen",
       "length": 490,
       "id": 453
-    },
-    {
-      "text": "Du kennst doch bestimmt den Spruch, dass Gott die Menschen nach seinem Ebenbild erschaffen hat. Guck dich mal um! Wenn man davon ausgeht, dass Gott ein Arschloch ist, ergibt das plötzlich mächtig viel Sinn.",
-      "source": "Die Känguru Chroniken – Ansichten eines Vorlauten",
-      "length": 206,
-      "id": 454
     },
     {
       "text": "Hoffnung ist ein Fehler. Wenn du nicht reparieren kannst, was kaputt ist, wirst du verrückt.",
@@ -3050,9 +3038,9 @@
       "id": 512
     },
     {
-      "text": "Ich danke dir für die anerkennenden Worte über die Dichter und die Dichtkunst. Und für die Belehrung in Sachen Bogenschießen. Eine gute Waffe ist das, der Bogen. Wisst ihr was? Ich glaube, dass sich die Kriegskunstgenau in diese Richtung entwickeln wird. In den künftigen Kriegen wird man auf Distanz kämpfen. Man wird eine Waffe mit so großer Reichweite erfinden, dass die Gegner einander umbringen können, ohne sich auch nur zu sehen.",
+      "text": "Ich danke dir für die anerkennenden Worte über die Dichter und die Dichtkunst. Und für die Belehrung in Sachen Bogenschießen. Eine gute Waffe ist das, der Bogen. Wisst ihr was? Ich glaube, dass sich die Kriegskunst genau in diese Richtung entwickeln wird. In den künftigen Kriegen wird man auf Distanz kämpfen. Man wird eine Waffe mit so großer Reichweite erfinden, dass die Gegner einander umbringen können, ohne sich auch nur zu sehen.",
       "source": "Geralt-Saga - Feuertaufe",
-      "length": 436,
+      "length": 437,
       "id": 513
     },
     {
@@ -3120,6 +3108,60 @@
       "source": "Geralt-Saga - Der Schwalbenturm",
       "length": 416,
       "id": 524
+    },
+    {
+      "text": "Die Angst tötet den Geist. Die Angst ist der kleine Tod, der die völlige Vernichtung bringt. Ich werde mich meiner Angst stellen. Ich werde sie über mich hinweg und durch mich hindurch ziehen lassen. Und wenn sie vorübergezogen ist, dann richte ich mein inneres Auge auf den Weg, den sie genommen hat. Wo die Angst vorübergezogen ist, wird nichts mehr sein. Nur ich werde noch da sein.",
+      "source": "Frank Herbert - Der Wüstenplanet",
+      "length": 385,
+      "id": 525
+    },
+    {
+      "text": "Jede Straße, der man bis ans Ende folgt, führt genau genommen nirgendwohin. Steige nur ein kleines Stück weit auf den Berg, um festzustellen, dass es sich um einen Berg handelt. Vom Gipfel aus kannst du den Berg nicht sehen.",
+      "source": "Frank Herbert - Der Wüstenplanet",
+      "length": 224,
+      "id": 526
+    },
+    {
+      "text": "Selbst wenn ich wüsste, dass die Welt morgen in Stücke zerfällt, würde ich immer noch meinen Apfelbaum einpflanzen.",
+      "source": "Martin Luther",
+      "length": 115,
+      "id": 527
+    },
+    {
+      "text": "Von guten Mächten wunderbar geborgen, erwarten wir getrost, was kommen mag. Gott ist mit uns am Abend und am Morgen und ganz gewiss an jedem Tag.",
+      "source": "Dietrich Bonhoeffer",
+      "length": 145,
+      "id": 528
+    },
+    {
+      "text": "Wer kommt zum Licht? Der die Wahrheit tut. Was heißt das? Wahrheit soll geschehen, sie soll nicht nur gedacht werden oder gewollt, sondern getan werden.",
+      "source": "Dietrich Bonhoeffer",
+      "length": 152,
+      "id": 529
+    },
+    {
+      "text": "Unser Leben währet siebzig Jahre, und wenn's hoch kommt, so sind's achtzig Jahre, und was daran köstlich scheint, ist doch nur vergebliche Mühe. Denn es fährt schnell dahin, als flögen wir davon. Wer glaubt's aber, dass du so sehr zürnest, und wer fürchtet sich vor dir in deinem Grimm? Lehre uns bedenken, dass wir sterben müssen, auf dass wir klug werden.",
+      "source": "Die Bibel - Psalm 130",
+      "length": 357,
+      "id": 530
+    },
+    {
+      "text": "Das Schreckliche daran ist, dass die Schönheit sowohl geheimnisvoll als auch schrecklich ist. Gott und der Teufel kämpfen dort, und das Schlachtfeld ist das Herz des Menschen.",
+      "source": "Fjodor Michailowitsch Dostojewski",
+      "length": 175,
+      "id": 531
+    },
+    {
+      "text": "Das Geheimnis des menschlichen Lebens liegt nicht im bloßen Leben, sondern im Sinn des Lebens.",
+      "source": "Fjodor Michailowitsch Dostojewski",
+      "length": 94,
+      "id": 532
+    },
+    {
+      "text": "Wir brauchen Routine und Tradition. Das ist Ordnung. Ordnung kann exzessiv werden, und das ist nicht gut, aber Chaos kann uns überschwemmen, so dass wir ertrinken - und auch das ist nicht gut. Wir müssen auf dem geraden und schmalen Weg bleiben.",
+      "source": "Jordan B. Peterson",
+      "length": 245,
+      "id": 533
     }
   ]
 }

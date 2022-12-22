@@ -6,13 +6,13 @@ import * as Notifications from "../elements/notifications";
 
 let rating = 0;
 
-type QuoteStats = {
+interface QuoteStats {
   average?: number;
   ratings?: number;
   totalRating?: number;
   quoteId?: number;
   language?: string;
-};
+}
 
 let quoteStats: QuoteStats | null | Record<string, never> = null;
 let currentQuote: MonkeyTypes.Quote | null = null;
@@ -165,6 +165,7 @@ async function submit(): Promise<void> {
   }
 
   const snapshot = DB.getSnapshot();
+  if (!snapshot) return;
   const quoteRatings = snapshot.quoteRatings ?? {};
 
   if (quoteRatings?.[currentQuote.language]?.[currentQuote.id]) {

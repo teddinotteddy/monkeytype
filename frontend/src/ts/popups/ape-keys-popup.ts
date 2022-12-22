@@ -2,6 +2,7 @@ import Ape from "../ape";
 import * as Loader from "../elements/loader";
 import * as Notifications from "../elements/notifications";
 import format from "date-fns/format";
+import * as ConnectionState from "../states/connection";
 
 let apeKeys: MonkeyTypes.ApeKeys = {};
 
@@ -35,7 +36,7 @@ function refreshList(): void {
     table.append(`
       <tr keyId="${apeKeyId}">
         <td>
-          <div class="text-button">
+          <div class="textButton">
             ${
               key.enabled
                 ? `<i class="fas fa-fw fa-check-square"></i>`
@@ -85,6 +86,10 @@ export function hide(): void {
 
 //show the popup
 export async function show(): Promise<void> {
+  if (!ConnectionState.get()) {
+    Notifications.add("You are offline", 0, 2);
+    return;
+  }
   if ($("#apeKeysPopupWrapper").hasClass("hidden")) {
     await getData();
     refreshList();
@@ -98,7 +103,7 @@ export async function show(): Promise<void> {
         },
         100,
         () => {
-          $("#apeKeysPopup textarea").trigger("focus").select();
+          $("#apeKeysPopup textarea").trigger("focus").trigger("select");
         }
       );
   }
@@ -114,11 +119,11 @@ $("#apeKeysPopup .generateApeKey").on("click", () => {
   hide();
 });
 
-$(document).on("click", "#apeKeysPopup table .keyButtons .button", () => {
+$("#popups").on("click", "#apeKeysPopup table .keyButtons .button", () => {
   hide();
 });
 
-$(document).on("click", "#apeKeysPopup table .text-button", async (e) => {
+$("#popups").on("click", "#apeKeysPopup table .textButton", async (e) => {
   const keyId = $(e.target).closest("tr").attr("keyId") as string;
   const key = apeKeys?.[keyId];
   if (!key || !apeKeys) return;

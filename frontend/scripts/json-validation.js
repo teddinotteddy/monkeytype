@@ -6,6 +6,21 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function findDuplicates(words) {
+  const wordFrequencies = {};
+  const duplicates = [];
+
+  words.forEach((word) => {
+    wordFrequencies[word] =
+      word in wordFrequencies ? wordFrequencies[word] + 1 : 1;
+
+    if (wordFrequencies[word] === 2) {
+      duplicates.push(word);
+    }
+  });
+  return duplicates;
+}
+
 function validateOthers() {
   return new Promise((resolve, reject) => {
     //fonts
@@ -48,11 +63,11 @@ function validateOthers() {
         type: "object",
         properties: {
           name: { type: "string" },
-          type: { type: "string" },
           info: { type: "string" },
-          affectsWordGeneration: { type: "boolean" },
+          canGetPb: { type: "boolean" },
+          alias: { type: "string" },
         },
-        required: ["name", "type", "info"],
+        required: ["name", "info", "canGetPb"],
       },
     };
     const funboxValidator = JSONValidator.validate(funboxData, funboxSchema);
@@ -282,16 +297,23 @@ function validateOthers() {
     Object.keys(layoutsData).forEach((layoutName) => {
       const layoutData = layoutsData[layoutName];
 
-      const layoutsValidator = JSONValidator.validate(
-        layoutData,
-        layoutsSchema[layoutData.type]
-      );
-      if (!layoutsValidator.valid) {
-        console.log(
-          `Layout ${layoutName} JSON schema is \u001b[31minvalid\u001b[0m`
-        );
+      if (!layoutsSchema[layoutData.type]) {
+        const msg = `Layout ${layoutName} has an invalid type: ${layoutData.type}`;
+        console.log(msg);
         layoutsAllGood = false;
-        layoutsErrors = layoutsValidator.errors;
+        layoutsErrors = [msg];
+      } else {
+        const layoutsValidator = JSONValidator.validate(
+          layoutData,
+          layoutsSchema[layoutData.type]
+        );
+        if (!layoutsValidator.valid) {
+          console.log(
+            `Layout ${layoutName} JSON schema is \u001b[31minvalid\u001b[0m`
+          );
+          layoutsAllGood = false;
+          layoutsErrors = layoutsValidator.errors;
+        }
       }
     });
     if (layoutsAllGood) {
@@ -506,7 +528,10 @@ function validateLanguages() {
       required: ["name", "leftToRight", "words"],
     };
     let languageFilesAllGood = true;
+    let languageWordListsAllGood = true;
     let languageFilesErrors;
+    const duplicatePercentageThreshold = 0.0001;
+    let langsWithDuplicates = 0;
     languagesData.forEach((language) => {
       const languageFileData = JSON.parse(
         fs.readFileSync(`./static/languages/${language}.json`, {
@@ -523,6 +548,20 @@ function validateLanguages() {
       if (!languageFileValidator.valid) {
         languageFilesAllGood = false;
         languageFilesErrors = languageFileValidator.errors;
+        return;
+      }
+
+      const duplicates = findDuplicates(languageFileData.words);
+      const duplicatePercentage =
+        (duplicates.length / languageFileData.words.length) * 100;
+      if (duplicatePercentage >= duplicatePercentageThreshold) {
+        langsWithDuplicates++;
+        languageWordListsAllGood = false;
+        languageFilesErrors = `Language '${languageFileData.name}' contains ${
+          duplicates.length
+        } (${Math.round(duplicatePercentage)}%) duplicates:`;
+        console.log(languageFilesErrors);
+        console.log(duplicates);
       }
     });
     if (languageFilesAllGood) {
@@ -535,6 +574,18 @@ function validateLanguages() {
       );
       return reject(new Error(languageFilesErrors));
     }
+
+    if (languageWordListsAllGood) {
+      console.log(
+        `Language word lists duplicate check is  \u001b[32mvalid\u001b[0m`
+      );
+    } else {
+      console.log(
+        `Language word lists duplicate check is \u001b[31minvalid\u001b[0m (${langsWithDuplicates} languages contain duplicates)`
+      );
+      return reject(new Error(languageFilesErrors));
+    }
+
     resolve();
   });
 }

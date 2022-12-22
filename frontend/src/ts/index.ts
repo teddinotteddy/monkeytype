@@ -4,6 +4,8 @@ import "../styles/index.scss";
 import "./firebase";
 
 import * as DB from "./db";
+import "./ui";
+import "./controllers/ad-controller";
 import Config from "./config";
 import * as TestStats from "./test/test-stats";
 import * as Replay from "./test/replay";
@@ -20,7 +22,7 @@ import "./popups/edit-preset-popup";
 import "./popups/simple-popups";
 import "./controllers/input-controller";
 import "./ready";
-import "./ui";
+import "./controllers/route-controller";
 import "./pages/about";
 import "./popups/pb-tables-popup";
 import "./elements/scroll-to-top";
@@ -28,8 +30,12 @@ import "./popups/mobile-test-config-popup";
 import "./popups/edit-tags-popup";
 import "./popups/google-sign-up-popup";
 import * as Account from "./pages/account";
-import { noGoogleNoMo } from "./controllers/account-controller";
 import "./elements/leaderboards";
+import "./commandline/index";
+import "./elements/no-css";
+import { egVideoListener } from "./popups/video-ad-popup";
+import "./states/connection";
+import "./test/tts";
 
 type ExtendedGlobal = typeof globalThis & MonkeyTypes.Global;
 
@@ -55,4 +61,6 @@ extendedGlobal.toggleUnsmoothedRaw = Result.toggleUnsmoothedRaw;
 
 extendedGlobal.enableSpacingDebug = TestInput.enableSpacingDebug;
 
-extendedGlobal.noGoogleNoMo = noGoogleNoMo;
+extendedGlobal.egVideoListener = egVideoListener;
+
+extendedGlobal.wpmCalculationDebug = TestStats.wpmCalculationDebug;

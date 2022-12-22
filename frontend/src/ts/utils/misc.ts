@@ -1,11 +1,238 @@
 import * as Loader from "../elements/loader";
-import format from "date-fns/format";
-import { Auth } from "../firebase";
 
-export function getuid(): void {
-  console.error("Only share this uid with Miodec and nobody else!");
-  console.log(Auth.currentUser?.uid);
-  console.error("Only share this uid with Miodec and nobody else!");
+async function fetchJson<T>(url: string): Promise<T> {
+  try {
+    if (!url) throw new Error("No URL");
+    const res = await fetch(url);
+    if (res.ok) {
+      return await res.json();
+    } else {
+      throw new Error(`${res.status} ${res.statusText}`);
+    }
+  } catch (e) {
+    console.error("Error fetching JSON: " + url, e);
+    throw e;
+  }
+}
+
+export const cachedFetchJson = memoizeAsync(fetchJson);
+
+export async function getLayoutsList(): Promise<MonkeyTypes.Layouts> {
+  try {
+    const layoutsList = await cachedFetchJson<MonkeyTypes.Layouts>(
+      "/./layouts/_list.json"
+    );
+    return layoutsList;
+  } catch (e) {
+    throw new Error("Layouts JSON fetch failed");
+  }
+}
+
+/**
+ * @throws {Error} If layout list or layout doesnt exist.
+ */
+export async function getLayout(
+  layoutName: string
+): Promise<MonkeyTypes.Layout> {
+  const layouts = await getLayoutsList();
+  const layout = layouts[layoutName];
+  if (layout === undefined) {
+    throw new Error(`Layout ${layoutName} is undefined`);
+  }
+  return layout;
+}
+
+let themesList: MonkeyTypes.Theme[] | undefined;
+export async function getThemesList(): Promise<MonkeyTypes.Theme[]> {
+  if (!themesList) {
+    let themes = await cachedFetchJson<MonkeyTypes.Theme[]>(
+      "/./themes/_list.json"
+    );
+
+    themes = themes.sort(function (a: MonkeyTypes.Theme, b: MonkeyTypes.Theme) {
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0;
+    });
+    themesList = themes;
+    return themesList;
+  } else {
+    return themesList;
+  }
+}
+
+let sortedThemesList: MonkeyTypes.Theme[] | undefined;
+export async function getSortedThemesList(): Promise<MonkeyTypes.Theme[]> {
+  if (!sortedThemesList) {
+    if (!themesList) {
+      await getThemesList();
+    }
+    if (!themesList) {
+      throw new Error("Themes list is undefined");
+    }
+    let sorted = [...themesList];
+    sorted = sorted.sort((a, b) => {
+      const b1 = hexToHSL(a.bgColor);
+      const b2 = hexToHSL(b.bgColor);
+      return b2.lgt - b1.lgt;
+    });
+    sortedThemesList = sorted;
+    return sortedThemesList;
+  } else {
+    return sortedThemesList;
+  }
+}
+
+export async function getLanguageList(): Promise<string[]> {
+  try {
+    const languageList = await cachedFetchJson<string[]>(
+      "/./languages/_list.json"
+    );
+    return languageList;
+  } catch (e) {
+    throw new Error("Language list JSON fetch failed");
+  }
+}
+
+export async function getLanguageGroups(): Promise<
+  MonkeyTypes.LanguageGroup[]
+> {
+  try {
+    const languageGroupList = await cachedFetchJson<
+      MonkeyTypes.LanguageGroup[]
+    >("/./languages/_groups.json");
+    return languageGroupList;
+  } catch (e) {
+    throw new Error("Language groups JSON fetch failed");
+  }
+}
+
+let currentLanguage: MonkeyTypes.LanguageObject;
+export async function getLanguage(
+  lang: string
+): Promise<MonkeyTypes.LanguageObject> {
+  // try {
+  if (currentLanguage == undefined || currentLanguage.name !== lang) {
+    currentLanguage = await cachedFetchJson<MonkeyTypes.LanguageObject>(
+      `/./languages/${lang}.json`
+    );
+  }
+  return currentLanguage;
+  // } catch (e) {
+  //   console.error(`error getting language`);
+  //   console.error(e);
+  //   currentLanguage = await cachedFetchJson<MonkeyTypes.LanguageObject>(
+  //     `/./language/english.json`
+  //   );
+  //   return currentLanguage;
+  // }
+}
+
+export async function getCurrentLanguage(
+  languageName: string
+): Promise<MonkeyTypes.LanguageObject> {
+  return await getLanguage(languageName);
+}
+
+export async function findCurrentGroup(
+  language: string
+): Promise<MonkeyTypes.LanguageGroup | undefined> {
+  let retgroup: MonkeyTypes.LanguageGroup | undefined;
+  const groups = await getLanguageGroups();
+  groups.forEach((group) => {
+    if (retgroup === undefined) {
+      if (group.languages.includes(language)) {
+        retgroup = group;
+      }
+    }
+  });
+  return retgroup;
+}
+
+let funboxList: MonkeyTypes.FunboxMetadata[] | undefined;
+export async function getFunboxList(): Promise<MonkeyTypes.FunboxMetadata[]> {
+  if (!funboxList) {
+    let list = await cachedFetchJson<MonkeyTypes.FunboxMetadata[]>(
+      "/./funbox/_list.json"
+    );
+    list = list.sort(function (
+      a: MonkeyTypes.FunboxMetadata,
+      b: MonkeyTypes.FunboxMetadata
+    ) {
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0;
+    });
+    funboxList = list;
+    return funboxList;
+  } else {
+    return funboxList;
+  }
+}
+
+export async function getFunbox(
+  funbox: string
+): Promise<MonkeyTypes.FunboxMetadata | undefined> {
+  const list: MonkeyTypes.FunboxMetadata[] = await getFunboxList();
+  return list.find(function (element) {
+    return element.name == funbox;
+  });
+}
+
+let fontsList: MonkeyTypes.FontObject[] | undefined;
+export async function getFontsList(): Promise<MonkeyTypes.FontObject[]> {
+  if (!fontsList) {
+    let list = await cachedFetchJson<MonkeyTypes.FontObject[]>(
+      "/./fonts/_list.json"
+    );
+    list = list.sort(function (
+      a: MonkeyTypes.FontObject,
+      b: MonkeyTypes.FontObject
+    ) {
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0;
+    });
+    fontsList = list;
+    return fontsList;
+  } else {
+    return fontsList;
+  }
+}
+
+export async function getChallengeList(): Promise<MonkeyTypes.Challenge[]> {
+  try {
+    const data = await cachedFetchJson<MonkeyTypes.Challenge[]>(
+      "/./challenges/_list.json"
+    );
+    return data;
+  } catch (e) {
+    throw new Error("Challenge list JSON fetch failed");
+  }
+}
+
+export async function getSupportersList(): Promise<string[]> {
+  try {
+    const data = await cachedFetchJson<string[]>("/./about/supporters.json");
+    return data;
+  } catch (e) {
+    throw new Error("Supporters list JSON fetch failed");
+  }
+}
+
+export async function getContributorsList(): Promise<string[]> {
+  try {
+    const data = await cachedFetchJson<string[]>("/./about/contributors.json");
+    return data;
+  } catch (e) {
+    throw new Error("Contributors list JSON fetch failed");
+  }
 }
 
 function hexToHSL(hex: string): {
@@ -74,222 +301,6 @@ export function isColorDark(hex: string): boolean {
   return hsl.lgt < 50;
 }
 
-type Theme = { name: string; bgColor: string; mainColor: string };
-
-let themesList: Theme[] = [];
-export async function getThemesList(): Promise<Theme[]> {
-  if (themesList.length == 0) {
-    return $.getJSON("themes/_list.json", function (data) {
-      const list = data.sort(function (a: Theme, b: Theme) {
-        const nameA = a.name.toLowerCase();
-        const nameB = b.name.toLowerCase();
-        if (nameA < nameB) return -1;
-        if (nameA > nameB) return 1;
-        return 0;
-      });
-      themesList = list;
-      return themesList;
-    });
-  } else {
-    return themesList;
-  }
-}
-
-let sortedThemesList: Theme[] = [];
-export async function getSortedThemesList(): Promise<Theme[]> {
-  if (sortedThemesList.length === 0) {
-    if (themesList.length === 0) {
-      await getThemesList();
-    }
-    let sorted = [...themesList];
-    sorted = sorted.sort((a, b) => {
-      const b1 = hexToHSL(a.bgColor);
-      const b2 = hexToHSL(b.bgColor);
-      return b2.lgt - b1.lgt;
-    });
-    sortedThemesList = sorted;
-    return sortedThemesList;
-  } else {
-    return sortedThemesList;
-  }
-}
-
-let funboxList: MonkeyTypes.FunboxObject[] = [];
-export async function getFunboxList(): Promise<MonkeyTypes.FunboxObject[]> {
-  if (funboxList.length === 0) {
-    return $.getJSON("funbox/_list.json", function (data) {
-      funboxList = data.sort(function (
-        a: MonkeyTypes.FunboxObject,
-        b: MonkeyTypes.FunboxObject
-      ) {
-        const nameA = a.name.toLowerCase();
-        const nameB = b.name.toLowerCase();
-        if (nameA < nameB) return -1;
-        if (nameA > nameB) return 1;
-        return 0;
-      });
-      return funboxList;
-    });
-  } else {
-    return funboxList;
-  }
-}
-
-export async function getFunbox(
-  funbox: string
-): Promise<MonkeyTypes.FunboxObject | undefined> {
-  const list: MonkeyTypes.FunboxObject[] = await getFunboxList();
-  return list.find(function (element) {
-    return element.name == funbox;
-  });
-}
-
-let layoutsList: MonkeyTypes.Layouts = {};
-export async function getLayoutsList(): Promise<MonkeyTypes.Layouts> {
-  if (Object.keys(layoutsList).length === 0) {
-    return $.getJSON("layouts/_list.json", function (data) {
-      layoutsList = data;
-      return layoutsList;
-    });
-  } else {
-    return layoutsList;
-  }
-}
-
-export async function getLayout(
-  layoutName: string
-): Promise<MonkeyTypes.Layout> {
-  if (Object.keys(layoutsList).length === 0) {
-    await getLayoutsList();
-  }
-  return layoutsList[layoutName];
-}
-
-type Font = { name: string; display?: string };
-
-let fontsList: Font[] = [];
-export async function getFontsList(): Promise<Font[]> {
-  if (fontsList.length === 0) {
-    return $.getJSON("fonts/_list.json", function (data) {
-      fontsList = data.sort(function (a: Font, b: Font) {
-        const nameA = a.name.toLowerCase();
-        const nameB = b.name.toLowerCase();
-        if (nameA < nameB) return -1;
-        if (nameA > nameB) return 1;
-        return 0;
-      });
-      return fontsList;
-    });
-  } else {
-    return fontsList;
-  }
-}
-
-let supportersList: string[] = [];
-export async function getSupportersList(): Promise<string[]> {
-  if (supportersList.length === 0) {
-    return $.getJSON("about/supporters.json", function (data) {
-      supportersList = data;
-      return supportersList;
-    });
-  } else {
-    return supportersList;
-  }
-}
-
-let contributorsList: string[] = [];
-export async function getContributorsList(): Promise<string[]> {
-  if (contributorsList.length === 0) {
-    return $.getJSON("about/contributors.json", function (data) {
-      contributorsList = data;
-      return contributorsList;
-    });
-  } else {
-    return contributorsList;
-  }
-}
-
-let languageList: string[] = [];
-export async function getLanguageList(): Promise<string[]> {
-  if (languageList.length === 0) {
-    return $.getJSON("languages/_list.json", function (data) {
-      languageList = data;
-      return languageList;
-    });
-  } else {
-    return languageList;
-  }
-}
-
-let languageGroupList: MonkeyTypes.LanguageGroup[] = [];
-export async function getLanguageGroups(): Promise<
-  MonkeyTypes.LanguageGroup[]
-> {
-  if (languageGroupList.length === 0) {
-    return $.getJSON("languages/_groups.json", function (data) {
-      languageGroupList = data;
-      return languageGroupList;
-    });
-  } else {
-    return languageGroupList;
-  }
-}
-
-let currentLanguage: MonkeyTypes.LanguageObject;
-export async function getLanguage(
-  lang: string
-): Promise<MonkeyTypes.LanguageObject> {
-  try {
-    if (currentLanguage == undefined || currentLanguage.name !== lang) {
-      console.log("getting language json");
-      await $.getJSON(`languages/${lang}.json`, function (data) {
-        currentLanguage = data;
-      });
-    }
-    return currentLanguage;
-  } catch (e) {
-    console.error(`error getting language`);
-    console.error(e);
-    await $.getJSON(`languages/english.json`, function (data) {
-      currentLanguage = data;
-    });
-    return currentLanguage;
-  }
-}
-
-export async function getCurrentLanguage(
-  languageName: string
-): Promise<MonkeyTypes.LanguageObject> {
-  return await getLanguage(languageName);
-}
-
-export async function findCurrentGroup(
-  language: string
-): Promise<MonkeyTypes.LanguageGroup | undefined> {
-  let retgroup: MonkeyTypes.LanguageGroup | undefined;
-  const groups = await getLanguageGroups();
-  groups.forEach((group) => {
-    if (retgroup === undefined) {
-      if (group.languages.includes(language)) {
-        retgroup = group;
-      }
-    }
-  });
-  return retgroup;
-}
-
-let challengeList: MonkeyTypes.Challenge[] = [];
-export async function getChallengeList(): Promise<MonkeyTypes.Challenge[]> {
-  if (challengeList.length === 0) {
-    return $.getJSON("challenges/_list.json", function (data) {
-      challengeList = data;
-      return challengeList;
-    });
-  } else {
-    return challengeList;
-  }
-}
-
 export function smooth(
   arr: number[],
   windowSize: number,
@@ -349,30 +360,18 @@ export function median(arr: number[]): number {
   }
 }
 
+export async function getLatestReleaseFromGitHub(): Promise<string> {
+  const releases = await $.getJSON(
+    "https://api.github.com/repos/monkeytypegame/monkeytype/releases?per_page=1"
+  );
+  return releases[0].name;
+}
+
 export async function getReleasesFromGitHub(): Promise<
   MonkeyTypes.GithubRelease[]
 > {
   return $.getJSON(
-    "https://api.github.com/repos/Miodec/monkeytype/releases",
-    (data) => {
-      $("#bottom .version .text").text(data[0].name);
-      $("#bottom .version").css("opacity", 1);
-      $("#versionHistory .releases").empty();
-      data.forEach((release: MonkeyTypes.GithubRelease) => {
-        if (!release.draft && !release.prerelease) {
-          $("#versionHistory .releases").append(`
-          <div class="release">
-            <div class="title">${release.name}</div>
-            <div class="date">${format(
-              new Date(release.published_at),
-              "dd MMM yyyy"
-            )}</div>
-            <div class="body">${release.body.replace(/\r\n/g, "<br>")}</div>
-          </div>
-        `);
-        }
-      });
-    }
+    "https://api.github.com/repos/monkeytypegame/monkeytype/releases?per_page=5"
   );
 }
 
@@ -402,6 +401,10 @@ export function capitalizeFirstLetterOfEachWord(str: string): string {
     .split(/ +/)
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ");
+}
+
+export function capitalizeFirstLetter(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 export function isASCIILetter(c: string): boolean {
@@ -590,6 +593,25 @@ export function getNumbers(len: number): string {
   return ret;
 }
 
+//convert numbers to arabic-indic
+export function convertNumberToArabic(numString: string): string {
+  const arabicIndic = "٠١٢٣٤٥٦٧٨٩";
+  let ret = "";
+  for (let i = 0; i < numString.length; i++) {
+    ret += arabicIndic[parseInt(numString[i])];
+  }
+  return ret;
+}
+
+export function convertNumberToNepali(numString: string): string {
+  const nepaliIndic = "०१२३४५६७८९";
+  let ret = "";
+  for (let i = 0; i < numString.length; i++) {
+    ret += nepaliIndic[parseInt(numString[i])];
+  }
+  return ret;
+}
+
 export function getSpecials(): string {
   const randLen = randomIntFromRange(1, 7);
   let ret = "";
@@ -617,6 +639,11 @@ export function getSpecials(): string {
     "/",
     "\\",
     "|",
+    "?",
+    ";",
+    ":",
+    ">",
+    "<",
   ];
   for (let i = 0; i < randLen; i++) {
     ret += randomElementFromArray(specials);
@@ -628,8 +655,7 @@ export function getASCII(): string {
   const randLen = randomIntFromRange(1, 10);
   let ret = "";
   for (let i = 0; i < randLen; i++) {
-    let ran = 33 + randomIntFromRange(0, 93);
-    while (ran == 96 || ran == 94) ran = 33 + randomIntFromRange(0, 93); //todo remove when input rewrite is fixed
+    const ran = 33 + randomIntFromRange(0, 93);
     ret += String.fromCharCode(ran);
   }
   return ret;
@@ -684,6 +710,28 @@ export function findGetParameter(
     .forEach(function (item) {
       tmp = item.split("=");
       if (tmp[0] === parameterName) result = decodeURIComponent(tmp[1]);
+    });
+  return result;
+}
+
+export function checkIfGetParameterExists(
+  parameterName: string,
+  getOverride?: string
+): boolean {
+  let result = false;
+  let tmp = [];
+
+  let search = location.search;
+  if (getOverride) {
+    search = getOverride;
+  }
+
+  search
+    .substr(1)
+    .split("&")
+    .forEach(function (item) {
+      tmp = item.split("=");
+      if (tmp[0] === parameterName) result = true;
     });
   return result;
 }
@@ -775,6 +823,17 @@ export function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+export function escapeHTML(str: string): string {
+  str = str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+  return str;
+}
+
 export function cleanTypographySymbols(textToClean: string): string {
   const specials = {
     "“": '"', // &ldquo;	&#8220;
@@ -835,21 +894,33 @@ export function canQuickRestart(
   mode: string,
   words: number,
   time: number,
-  CustomText: MonkeyTypes.CustomText
+  CustomText: MonkeyTypes.CustomText,
+  customTextIsLong: boolean
 ): boolean {
+  const wordsLong = mode === "words" && (words >= 1000 || words === 0);
+  const timeLong = mode === "time" && (time >= 900 || time === 0);
+  const customTextLong = mode === "custom" && customTextIsLong == true;
+  const customTextRandomWordsLong =
+    mode === "custom" && CustomText.isWordRandom && CustomText.word >= 1000;
+  const customTextRandomTimeLong =
+    mode === "custom" && CustomText.isTimeRandom && CustomText.time > 900;
+  const customTextNoRandomLong =
+    mode === "custom" &&
+    !CustomText.isWordRandom &&
+    !CustomText.isTimeRandom &&
+    CustomText.text.length >= 1000;
+
   if (
-    (mode === "words" && words < 1000) ||
-    (mode === "time" && time < 3600) ||
-    mode === "quote" ||
-    (mode === "custom" && CustomText.isWordRandom && CustomText.word < 1000) ||
-    (mode === "custom" && CustomText.isTimeRandom && CustomText.time < 3600) ||
-    (mode === "custom" &&
-      !CustomText.isWordRandom &&
-      CustomText.text.length < 1000)
+    wordsLong ||
+    timeLong ||
+    customTextLong ||
+    customTextRandomWordsLong ||
+    customTextRandomTimeLong ||
+    customTextNoRandomLong
   ) {
-    return true;
-  } else {
     return false;
+  } else {
+    return true;
   }
 }
 
@@ -909,24 +980,25 @@ export function convertRemToPixels(rem: number): number {
   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
 
-export function swapElements(
+export async function swapElements(
   el1: JQuery,
   el2: JQuery,
   totalDuration: number,
-  callback = function (): void {
-    return;
+  callback = async function (): Promise<void> {
+    return Promise.resolve();
   },
-  middleCallback = function (): void {
-    return;
+  middleCallback = async function (): Promise<void> {
+    return Promise.resolve();
   }
-): boolean | undefined {
+): Promise<boolean | undefined> {
   if (
     (el1.hasClass("hidden") && !el2.hasClass("hidden")) ||
     (!el1.hasClass("hidden") && el2.hasClass("hidden"))
   ) {
     //one of them is hidden and the other is visible
     if (el1.hasClass("hidden")) {
-      callback();
+      await middleCallback();
+      await callback();
       return false;
     }
     $(el1)
@@ -937,8 +1009,8 @@ export function swapElements(
           opacity: 0,
         },
         totalDuration / 2,
-        () => {
-          middleCallback();
+        async () => {
+          await middleCallback();
           $(el1).addClass("hidden");
           $(el2)
             .removeClass("hidden")
@@ -956,6 +1028,7 @@ export function swapElements(
       );
   } else if (el1.hasClass("hidden") && el2.hasClass("hidden")) {
     //both are hidden, only fade in the second
+    await middleCallback();
     $(el2)
       .removeClass("hidden")
       .css("opacity", 0)
@@ -964,12 +1037,13 @@ export function swapElements(
           opacity: 1,
         },
         totalDuration,
-        () => {
-          callback();
+        async () => {
+          await callback();
         }
       );
   } else {
-    callback();
+    await middleCallback();
+    await callback();
   }
 
   return;
@@ -1121,7 +1195,7 @@ export function createErrorMessage(error: unknown, message: string): string {
 }
 
 export function isAnyPopupVisible(): boolean {
-  const popups = document.querySelectorAll(".popupWrapper");
+  const popups = document.querySelectorAll("#popups .popupWrapper");
   let popupVisible = false;
   for (const popup of popups) {
     const style = window.getComputedStyle(popup);
@@ -1131,4 +1205,148 @@ export function isAnyPopupVisible(): boolean {
     }
   }
   return popupVisible;
+}
+
+export async function getDiscordAvatarUrl(
+  discordId?: string,
+  discordAvatar?: string,
+  discordAvatarSize = 32
+): Promise<string | null> {
+  if (!discordId || !discordAvatar) {
+    return null;
+  }
+
+  // An invalid request to this URL will return a 404.
+  try {
+    const avatarUrl = `https://cdn.discordapp.com/avatars/${discordId}/${discordAvatar}.png?size=${discordAvatarSize}`;
+
+    const response = await fetch(avatarUrl);
+    if (!response.ok) {
+      return null;
+    }
+
+    return avatarUrl;
+  } catch (error) {}
+
+  return null;
+}
+
+export function getLevel(xp: number): number {
+  return (1 / 98) * (-151 + Math.sqrt(392 * xp + 22801)) + 1;
+}
+
+export function getXpForLevel(level: number): number {
+  return 49 * (level - 1) + 100;
+}
+
+export async function promiseAnimation(
+  el: JQuery<HTMLElement>,
+  animation: Record<string, string>,
+  duration: number,
+  easing: string
+): Promise<void> {
+  return new Promise((resolve) => {
+    el.animate(animation, duration, easing, resolve);
+  });
+}
+
+//abbreviateNumber
+export function abbreviateNumber(num: number, decimalPoints = 1): string {
+  if (num < 1000) {
+    return num.toString();
+  }
+
+  const exp = Math.floor(Math.log(num) / Math.log(1000));
+  const pre = "kmbtqQsSond".charAt(exp - 1);
+  return (num / Math.pow(1000, exp)).toFixed(decimalPoints) + pre;
+}
+
+export async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function memoizeAsync<T extends (...args: any) => Promise<any>>(
+  fn: T,
+  getKey?: (...args: Parameters<T>) => any
+): T {
+  const cache = new Map<any, Promise<ReturnType<T>>>();
+
+  return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+    const key = getKey ? getKey.apply(args) : args[0];
+
+    if (cache.has(key)) {
+      const ret = await cache.get(key);
+      if (ret !== undefined) {
+        return ret as ReturnType<T>;
+      }
+    }
+
+    // eslint-disable-next-line prefer-spread
+    const result = fn.apply(null, args);
+    cache.set(key, result);
+
+    return result;
+  }) as T;
+}
+
+export class Wordset {
+  public words: string[];
+  public length: number;
+  constructor(words: string[]) {
+    this.words = words;
+    this.length = this.words.length;
+  }
+
+  public randomWord(): string {
+    return randomElementFromArray(this.words);
+  }
+}
+
+export class Section {
+  public title: string;
+  public author: string;
+  public words: string[];
+  constructor(title: string, author: string, words: string[]) {
+    this.title = title;
+    this.author = author;
+    this.words = words;
+  }
+}
+
+export function isPasswordStrong(password: string): boolean {
+  const hasCapital = !!password.match(/[A-Z]/);
+  const hasNumber = !!password.match(/[\d]/);
+  const hasSpecial = !!password.match(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/);
+  const isLong = password.length >= 8;
+  return hasCapital && hasNumber && hasSpecial && isLong;
+}
+
+export function areUnsortedArraysEqual(a: unknown[], b: unknown[]): boolean {
+  return a.length === b.length && a.every((v) => b.includes(v));
+}
+
+export function areSortedArraysEqual(a: unknown[], b: unknown[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+export function intersect<T>(a: T[], b: T[], removeDuplicates = false): T[] {
+  let t;
+  if (b.length > a.length) (t = b), (b = a), (a = t); // indexOf to loop over shorter
+  const filtered = a.filter(function (e) {
+    return b.indexOf(e) > -1;
+  });
+  return removeDuplicates ? [...new Set(filtered)] : filtered;
+}
+
+export function htmlToText(html: string): string {
+  const el = document.createElement("div");
+  el.innerHTML = html;
+  return el.textContent || el.innerText || "";
+}
+
+export function camelCaseToWords(str: string): string {
+  return str
+    .replace(/([A-Z])/g, " $1")
+    .trim()
+    .toLowerCase();
 }

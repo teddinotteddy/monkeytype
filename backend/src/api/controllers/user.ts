@@ -1,17 +1,48 @@
+import _ from "lodash";
 import * as UserDAL from "../../dal/user";
 import MonkeyError from "../../utils/error";
 import Logger from "../../utils/logger";
 import { MonkeyResponse } from "../../utils/monkey-response";
-import { linkAccount } from "../../utils/discord";
-import { buildAgentLog } from "../../utils/misc";
-import * as George from "../../tasks/george";
+import * as DiscordUtils from "../../utils/discord";
+import { buildAgentLog, sanitizeString } from "../../utils/misc";
+import GeorgeQueue from "../../queues/george-queue";
 import admin from "firebase-admin";
+import { deleteAllApeKeys } from "../../dal/ape-keys";
+import { deleteAllPresets } from "../../dal/preset";
+import { deleteAll as deleteAllResults } from "../../dal/result";
+import { deleteConfig } from "../../dal/config";
+import { verify } from "../../utils/captcha";
+import * as LeaderboardsDAL from "../../dal/leaderboards";
+import { purgeUserFromDailyLeaderboards } from "../../utils/daily-leaderboards";
+import { randomBytes } from "crypto";
+import * as RedisClient from "../../init/redis";
+
+async function verifyCaptcha(captcha: string): Promise<void> {
+  if (!(await verify(captcha))) {
+    throw new MonkeyError(422, "Captcha check failed");
+  }
+}
 
 export async function createNewUser(
   req: MonkeyTypes.Request
 ): Promise<MonkeyResponse> {
-  const { name } = req.body;
+  const { name, captcha } = req.body;
   const { email, uid } = req.ctx.decodedToken;
+
+  try {
+    await verifyCaptcha(captcha);
+  } catch (e) {
+    try {
+      await admin.auth().deleteUser(uid);
+    } catch (e) {
+      // user might be deleted on the frontend
+    }
+    throw e;
+  }
+
+  if (email.endsWith("@tidal.lol") || email.endsWith("@selfbot.cc")) {
+    throw new MonkeyError(400, "Invalid domain");
+  }
 
   const available = await UserDAL.isNameAvailable(name);
   if (!available) {
@@ -30,10 +61,42 @@ export async function deleteUser(
   const { uid } = req.ctx.decodedToken;
 
   const userInfo = await UserDAL.getUser(uid, "delete user");
-  await UserDAL.deleteUser(uid);
+  await Promise.all([
+    UserDAL.deleteUser(uid),
+    deleteAllApeKeys(uid),
+    deleteAllPresets(uid),
+    deleteConfig(uid),
+    purgeUserFromDailyLeaderboards(
+      uid,
+      req.ctx.configuration.dailyLeaderboards
+    ),
+  ]);
+
   Logger.logToDb("user_deleted", `${userInfo.email} ${userInfo.name}`, uid);
 
   return new MonkeyResponse("User deleted");
+}
+
+export async function resetUser(
+  req: MonkeyTypes.Request
+): Promise<MonkeyResponse> {
+  const { uid } = req.ctx.decodedToken;
+
+  const userInfo = await UserDAL.getUser(uid, "reset user");
+  await Promise.all([
+    UserDAL.resetUser(uid),
+    deleteAllApeKeys(uid),
+    deleteAllPresets(uid),
+    deleteAllResults(uid),
+    deleteConfig(uid),
+    purgeUserFromDailyLeaderboards(
+      uid,
+      req.ctx.configuration.dailyLeaderboards
+    ),
+  ]);
+  Logger.logToDb("user_reset", `${userInfo.email} ${userInfo.name}`, uid);
+
+  return new MonkeyResponse("User reset");
 }
 
 export async function updateName(
@@ -59,6 +122,10 @@ export async function clearPb(
   const { uid } = req.ctx.decodedToken;
 
   await UserDAL.clearPb(uid);
+  await purgeUserFromDailyLeaderboards(
+    uid,
+    req.ctx.configuration.dailyLeaderboards
+  );
   Logger.logToDb("user_cleared_pbs", "", uid);
 
   return new MonkeyResponse("User's PB cleared");
@@ -94,6 +161,19 @@ export async function updateEmail(
   return new MonkeyResponse("Email updated");
 }
 
+function getRelevantUserInfo(
+  user: MonkeyTypes.User
+): Partial<MonkeyTypes.User> {
+  return _.omit(user, [
+    "bananas",
+    "lbPersonalBests",
+    "quoteMod",
+    "inbox",
+    "nameHistory",
+    "lastNameChange",
+  ]);
+}
+
 export async function getUser(
   req: MonkeyTypes.Request
 ): Promise<MonkeyResponse> {
@@ -103,41 +183,101 @@ export async function getUser(
   try {
     userInfo = await UserDAL.getUser(uid, "get user");
   } catch (e) {
-    await admin.auth().deleteUser(uid);
-    throw new MonkeyError(
-      404,
-      "User not found. Please try to sign up again.",
-      "get user",
-      uid
-    );
+    if (e.status === 404) {
+      let user;
+      try {
+        user = await admin.auth().getUser(uid);
+        //exists, recreate in db
+        await UserDAL.addUser(user.displayName, user.email, uid);
+        userInfo = await UserDAL.getUser(uid, "get user (recreated)");
+      } catch (e) {
+        if (e.code === "auth/user-not-found") {
+          //doesnt exist
+          throw new MonkeyError(
+            404,
+            "User not found in the database or authentication system. Please try to sign up again.",
+            "get user",
+            uid
+          );
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      throw e;
+    }
   }
 
   const agentLog = buildAgentLog(req);
   Logger.logToDb("user_data_requested", agentLog, uid);
 
-  return new MonkeyResponse("User data retrieved", userInfo);
+  let inboxUnreadSize = 0;
+  if (req.ctx.configuration.users.inbox.enabled) {
+    inboxUnreadSize = _.filter(userInfo.inbox, { read: false }).length;
+  }
+
+  const userData = {
+    ...getRelevantUserInfo(userInfo),
+    inboxUnreadSize: inboxUnreadSize,
+  };
+
+  return new MonkeyResponse("User data retrieved", userData);
+}
+
+export async function getOauthLink(
+  req: MonkeyTypes.Request
+): Promise<MonkeyResponse> {
+  const connection = RedisClient.getConnection();
+  if (!connection) {
+    throw new MonkeyError(500, "Redis connection not found");
+  }
+
+  const { uid } = req.ctx.decodedToken;
+  const token = randomBytes(10).toString("hex");
+
+  //add the token uid pair to reids
+  await connection.setex(`discordoauth:${uid}`, 60, token);
+
+  //build the url
+  const url = DiscordUtils.getOauthLink();
+
+  //return
+  return new MonkeyResponse("Discord oauth link generated", {
+    url: `${url}&state=${token}`,
+  });
 }
 
 export async function linkDiscord(
   req: MonkeyTypes.Request
 ): Promise<MonkeyResponse> {
+  const connection = RedisClient.getConnection();
+  if (!connection) {
+    throw new MonkeyError(500, "Redis connection not found");
+  }
   const { uid } = req.ctx.decodedToken;
-  const {
-    data: { tokenType, accessToken },
-  } = req.body;
+  const { tokenType, accessToken, state } = req.body;
+
+  const redisToken = await connection.getdel(`discordoauth:${uid}`);
+
+  if (!redisToken || redisToken !== state) {
+    throw new MonkeyError(403, "Invalid user token");
+  }
 
   const userInfo = await UserDAL.getUser(uid, "link discord");
-  if (userInfo.discordId) {
-    throw new MonkeyError(
-      409,
-      "This account is already linked to a Discord account"
-    );
-  }
   if (userInfo.banned) {
     throw new MonkeyError(403, "Banned accounts cannot link with Discord");
   }
 
-  const { id: discordId } = await linkAccount(tokenType, accessToken);
+  const { id: discordId, avatar: discordAvatar } =
+    await DiscordUtils.getDiscordUser(tokenType, accessToken);
+
+  if (userInfo.discordId) {
+    await UserDAL.linkDiscord(uid, userInfo.discordId, discordAvatar);
+    return new MonkeyResponse("Discord avatar updated", {
+      discordId,
+      discordAvatar,
+    });
+  }
 
   if (!discordId) {
     throw new MonkeyError(
@@ -155,12 +295,15 @@ export async function linkDiscord(
     );
   }
 
-  await UserDAL.linkDiscord(uid, discordId);
+  await UserDAL.linkDiscord(uid, discordId, discordAvatar);
 
-  George.linkDiscord(discordId, uid);
+  GeorgeQueue.linkDiscord(discordId, uid);
   Logger.logToDb("user_discord_link", `linked to ${discordId}`, uid);
 
-  return new MonkeyResponse("Discord account linked", discordId);
+  return new MonkeyResponse("Discord account linked", {
+    discordId,
+    discordAvatar,
+  });
 }
 
 export async function unlinkDiscord(
@@ -173,11 +316,36 @@ export async function unlinkDiscord(
     throw new MonkeyError(404, "User does not have a linked Discord account");
   }
 
-  George.unlinkDiscord(userInfo.discordId, uid);
+  GeorgeQueue.unlinkDiscord(userInfo.discordId, uid);
   await UserDAL.unlinkDiscord(uid);
   Logger.logToDb("user_discord_unlinked", userInfo.discordId, uid);
 
   return new MonkeyResponse("Discord account unlinked");
+}
+
+export async function addResultFilterPreset(
+  req: MonkeyTypes.Request
+): Promise<MonkeyResponse> {
+  const { uid } = req.ctx.decodedToken;
+  const filter = req.body;
+  const { maxPresetsPerUser } = req.ctx.configuration.results.filterPresets;
+
+  const createdId = await UserDAL.addResultFilterPreset(
+    uid,
+    filter,
+    maxPresetsPerUser
+  );
+  return new MonkeyResponse("Result filter preset created", createdId);
+}
+
+export async function removeResultFilterPreset(
+  req: MonkeyTypes.Request
+): Promise<MonkeyResponse> {
+  const { uid } = req.ctx.decodedToken;
+  const { presetId } = req.params;
+
+  await UserDAL.removeResultFilterPreset(uid, presetId);
+  return new MonkeyResponse("Result filter preset deleted");
 }
 
 export async function addTag(
@@ -324,7 +492,7 @@ export async function addFavoriteQuote(
     uid,
     language,
     quoteId,
-    req.ctx.configuration.favoriteQuotes.maxFavorites
+    req.ctx.configuration.quotes.maxFavorites
   );
 
   return new MonkeyResponse("Quote added to favorites");
@@ -339,4 +507,161 @@ export async function removeFavoriteQuote(
   await UserDAL.removeFavoriteQuote(uid, language, quoteId);
 
   return new MonkeyResponse("Quote removed from favorites");
+}
+
+export async function getProfile(
+  req: MonkeyTypes.Request
+): Promise<MonkeyResponse> {
+  const { uidOrName } = req.params;
+
+  const { isUid } = req.query;
+
+  const user =
+    isUid !== undefined
+      ? await UserDAL.getUser(uidOrName, "get user profile")
+      : await UserDAL.getUserByName(uidOrName, "get user profile");
+
+  const {
+    name,
+    banned,
+    inventory,
+    profileDetails,
+    personalBests,
+    completedTests,
+    startedTests,
+    timeTyping,
+    addedAt,
+    discordId,
+    discordAvatar,
+    xp,
+    streak,
+  } = user;
+
+  const validTimePbs = _.pick(personalBests?.time, "15", "30", "60", "120");
+  const validWordsPbs = _.pick(personalBests?.words, "10", "25", "50", "100");
+
+  const typingStats = {
+    completedTests,
+    startedTests,
+    timeTyping,
+  };
+
+  const relevantPersonalBests = {
+    time: validTimePbs,
+    words: validWordsPbs,
+  };
+
+  const baseProfile = {
+    name,
+    banned,
+    addedAt,
+    typingStats,
+    personalBests: relevantPersonalBests,
+    discordId,
+    discordAvatar,
+    xp,
+    streak: streak?.length ?? 0,
+    maxStreak: streak?.maxLength ?? 0,
+  };
+
+  if (banned) {
+    return new MonkeyResponse("Profile retrived: banned user", baseProfile);
+  }
+
+  const allTime15English = await LeaderboardsDAL.getRank(
+    "time",
+    "15",
+    "english",
+    user.uid
+  );
+
+  const allTime60English = await LeaderboardsDAL.getRank(
+    "time",
+    "60",
+    "english",
+    user.uid
+  );
+
+  const allTime15EnglishRank = allTime15English
+    ? allTime15English.rank
+    : undefined;
+  const allTime60EnglishRank = allTime60English
+    ? allTime60English.rank
+    : undefined;
+
+  const alltimelbs = {
+    time: {
+      "15": {
+        english: allTime15EnglishRank,
+      },
+      "60": {
+        english: allTime60EnglishRank,
+      },
+    },
+  };
+
+  const profileData = {
+    ...baseProfile,
+    inventory,
+    details: profileDetails,
+    allTimeLbs: alltimelbs,
+    uid: user.uid,
+  };
+
+  return new MonkeyResponse("Profile retrieved", profileData);
+}
+
+export async function updateProfile(
+  req: MonkeyTypes.Request
+): Promise<MonkeyResponse> {
+  const { uid } = req.ctx.decodedToken;
+  const { bio, keyboard, socialProfiles, selectedBadgeId } = req.body;
+
+  const user = await UserDAL.getUser(uid, "update user profile");
+
+  if (user.banned) {
+    throw new MonkeyError(403, "Banned users cannot update their profile");
+  }
+
+  user.inventory?.badges.forEach((badge) => {
+    if (badge.id === selectedBadgeId) {
+      badge.selected = true;
+    } else {
+      delete badge.selected;
+    }
+  });
+
+  const profileDetailsUpdates: Partial<MonkeyTypes.UserProfileDetails> = {
+    bio: sanitizeString(bio),
+    keyboard: sanitizeString(keyboard),
+    socialProfiles: _.mapValues(socialProfiles, sanitizeString),
+  };
+
+  await UserDAL.updateProfile(uid, profileDetailsUpdates, user.inventory);
+
+  return new MonkeyResponse("Profile updated");
+}
+
+export async function getInbox(
+  req: MonkeyTypes.Request
+): Promise<MonkeyResponse> {
+  const { uid } = req.ctx.decodedToken;
+
+  const inbox = await UserDAL.getInbox(uid);
+
+  return new MonkeyResponse("Inbox retrieved", {
+    inbox,
+    maxMail: req.ctx.configuration.users.inbox.maxMail,
+  });
+}
+
+export async function updateInbox(
+  req: MonkeyTypes.Request
+): Promise<MonkeyResponse> {
+  const { uid } = req.ctx.decodedToken;
+  const { mailIdsToMarkRead, mailIdsToDelete } = req.body;
+
+  await UserDAL.updateInbox(uid, mailIdsToMarkRead, mailIdsToDelete);
+
+  return new MonkeyResponse("Inbox updated");
 }

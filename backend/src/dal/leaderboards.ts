@@ -63,7 +63,7 @@ export async function update(
   const str = `lbPersonalBests.${mode}.${mode2}.${language}`;
   const start1 = performance.now();
   const lb = await db
-    .collection<MonkeyTypes.LeaderboardEntry>("users")
+    .collection<MonkeyTypes.User>("users")
     .aggregate<MonkeyTypes.LeaderboardEntry>(
       [
         {
@@ -78,6 +78,10 @@ export async function update(
               $exists: true,
             },
             banned: { $exists: false },
+            needsToChangeName: { $exists: false },
+            timeTyping: {
+              $gt: process.env.MODE === "dev" ? 0 : 7200,
+            },
           },
         },
         {
@@ -85,6 +89,8 @@ export async function update(
             [str + ".uid"]: "$uid",
             [str + ".name"]: "$name",
             [str + ".discordId"]: "$discordId",
+            [str + ".discordAvatar"]: "$discordAvatar",
+            [str + ".badges"]: "$inventory.badges",
           },
         },
         {
@@ -112,6 +118,15 @@ export async function update(
     if (uid && lbEntry.uid === uid) {
       retval = index + 1;
     }
+
+    // extract selected badge
+    if (lbEntry.badges) {
+      const selectedBadge = lbEntry.badges.find((badge) => badge.selected);
+      if (selectedBadge) {
+        lbEntry.badgeId = selectedBadge.id;
+      }
+      delete lbEntry.badges;
+    }
   });
   const end2 = performance.now();
   const start3 = performance.now();
@@ -138,14 +153,31 @@ export async function update(
   leaderboardUpdating[`${language}_${mode}_${mode2}`] = false;
   const end4 = performance.now();
 
+  const start5 = performance.now();
+  const buckets = {}; // { "70": count, "80": count }
+  for (const lbEntry of lb) {
+    const bucket = Math.floor(lbEntry.wpm / 10).toString() + "0";
+    if (bucket in buckets) buckets[bucket]++;
+    else buckets[bucket] = 1;
+  }
+  await db
+    .collection("public")
+    .updateOne(
+      { type: "speedStats" },
+      { $set: { [`${language}_${mode}_${mode2}`]: buckets } },
+      { upsert: true }
+    );
+  const end5 = performance.now();
+
   const timeToRunAggregate = (end1 - start1) / 1000;
   const timeToRunLoop = (end2 - start2) / 1000;
   const timeToRunInsert = (end3 - start3) / 1000;
   const timeToRunIndex = (end4 - start4) / 1000;
+  const timeToSaveHistogram = (end5 - start5) / 1000; // not sent to prometheus yet
 
   Logger.logToDb(
     `system_lb_update_${language}_${mode}_${mode2}`,
-    `Aggregate ${timeToRunAggregate}s, loop ${timeToRunLoop}s, insert ${timeToRunInsert}s, index ${timeToRunIndex}s`,
+    `Aggregate ${timeToRunAggregate}s, loop ${timeToRunLoop}s, insert ${timeToRunInsert}s, index ${timeToRunIndex}s, histogram ${timeToSaveHistogram}`,
     uid
   );
 

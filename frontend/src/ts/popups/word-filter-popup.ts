@@ -1,12 +1,26 @@
 import * as Misc from "../utils/misc";
 import * as CustomText from "../test/custom-text";
+import * as Notifications from "../elements/notifications";
 
 let initialised = false;
 
 async function init(): Promise<void> {
   if (!initialised) {
     $("#wordFilterPopup .languageInput").empty();
-    const LanguageList = await Misc.getLanguageList();
+
+    let LanguageList;
+    try {
+      LanguageList = await Misc.getLanguageList();
+    } catch (e) {
+      console.error(
+        Misc.createErrorMessage(
+          e,
+          "Failed to initialise word filter popup language list"
+        )
+      );
+      return;
+    }
+
     LanguageList.forEach((language) => {
       let prettyLang = language;
       prettyLang = prettyLang.replace("_", " ");
@@ -42,7 +56,18 @@ async function filter(language: string): Promise<string[]> {
   filterout = filterout.replace(/\s+/gi, "|");
   const regexcl = new RegExp(filterout, "i");
   const filteredWords = [];
-  const languageWordList = await Misc.getLanguage(language);
+
+  let languageWordList;
+  try {
+    languageWordList = await Misc.getLanguage(language);
+  } catch (e) {
+    Notifications.add(
+      Misc.createErrorMessage(e, "Failed to filter language words"),
+      -1
+    );
+    return [];
+  }
+
   const maxLengthInput = $("#wordFilterPopup .wordMaxInput").val() as string;
   const minLengthInput = $("#wordFilterPopup .wordMinInput").val() as string;
   let maxLength;
@@ -83,7 +108,7 @@ async function apply(set: boolean): Promise<void> {
   hide();
 }
 
-$("#wordFilterPopupWrapper").mousedown((e) => {
+$("#wordFilterPopupWrapper").on("mousedown", (e) => {
   if ($(e.target).attr("id") === "wordFilterPopupWrapper") {
     hide();
   }
@@ -93,7 +118,7 @@ $("#wordFilterPopup .languageInput").one("select2:open", function () {
   $("input.select2-search__field").prop("placeholder", "search");
 });
 
-$("#wordFilterPopupWrapper .button").mousedown((e) => {
+$("#wordFilterPopupWrapper .button").on("mousedown", (e) => {
   $("#wordFilterPopupWrapper .loadingIndicator").removeClass("hidden");
   $("#wordFilterPopupWrapper .button").addClass("hidden");
   setTimeout(() => {

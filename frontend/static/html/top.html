@@ -46,17 +46,18 @@
   <div id="menu">
     <a
       id="startTestButton"
-      class="text-button view-start"
+      class="textButton view-start"
       tabindex="2"
       href="/"
       onclick="this.blur();"
+      router-link
     >
       <div class="icon">
         <i class="fas fa-fw fa-keyboard"></i>
       </div>
     </a>
     <div
-      class="text-button leaderboards view-leaderboards"
+      class="textButton leaderboards view-leaderboards"
       tabindex="2"
       onclick="this.blur();"
     >
@@ -65,17 +66,18 @@
       </div>
     </div>
     <a
-      class="text-button view-about"
+      class="textButton view-about"
       tabindex="2"
       href="/about"
       onclick="this.blur();"
+      router-link
     >
       <div class="icon">
         <i class="fas fa-fw fa-info"></i>
       </div>
     </a>
     <!-- <a
-      class="text-button discord"
+      class="textButton discord"
       tabindex="2"
       href="https://discord.gg/yENzqcB"
       onclick="this.blur();"
@@ -87,132 +89,59 @@
       </div>
     </a> -->
     <a
-      class="text-button view-settings"
+      class="textButton view-settings"
       tabindex="2"
       href="/settings"
       onclick="this.blur();"
+      router-link
     >
       <div class="icon">
         <i class="fas fa-fw fa-cog"></i>
       </div>
     </a>
+    <div></div>
     <a
-      class="text-button hidden account view-account"
+      class="textButton hidden account view-account"
       tabindex="2"
       href="/account"
       onclick="this.blur();"
+      router-link
     >
-      <div class="icon">
+      <div class="loading hidden">
+        <i class="fas fa-fw fa-spin fa-circle-notch"></i>
+      </div>
+      <div class="user">
         <i class="fas fa-fw fa-user"></i>
       </div>
+      <div class="avatar hidden"></div>
       <div class="text"></div>
+      <div class="levelAndBar">
+        <div class="level">1</div>
+        <div class="xpBar">
+          <div class="bar"></div>
+          <div class="xpGain"></div>
+          <div class="xpBreakdown"></div>
+        </div>
+      </div>
     </a>
-    <a
-      class="text-button login view-login"
-      tabindex="2"
-      href="/login"
-      onclick="this.blur();"
-    >
+    <div class="textButton showAlerts" tabindex="2" onclick="this.blur();">
       <div class="icon">
-        <i class="far fa-fw fa-user"></i>
+        <i class="fas fa-fw fa-bell"></i>
       </div>
-    </a>
-  </div>
-
-  <div class="config hidden">
-    <div class="mobileConfig">
-      <div class="text-button">
-        <i class="fas fa-bars"></i>
-      </div>
+      <div class="notificationBubble hidden">5</div>
     </div>
-    <div class="desktopConfig">
-      <div
-        class="puncAndNum"
-        style="display: grid; grid-auto-flow: column; padding-top: 0.1rem"
-      >
-        <div class="group punctuationMode">
-          <!--           <div class="title">time</div> -->
-          <div class="buttons">
-            <div class="text-button toggleButton" tabindex="2">punctuation</div>
-          </div>
-        </div>
-        <div class="group numbersMode">
-          <!--           <div class="title">time</div> -->
-          <div class="buttons">
-            <div class="text-button toggleButton" tabindex="2">numbers</div>
-          </div>
-        </div>
-      </div>
-      <div class="group mode">
-        <!--           <div class="title">mode</div> -->
-        <div class="buttons">
-          <div class="text-button active" mode="time" tabindex="2">time</div>
-          <div class="text-button" mode="words" tabindex="2">words</div>
-          <div class="text-button" mode="quote" tabindex="2">quote</div>
-          <div class="text-button" mode="zen" tabindex="2">zen</div>
-          <div class="text-button" mode="custom" tabindex="2">custom</div>
-        </div>
-      </div>
-      <div class="group wordCount hidden">
-        <!--           <div class="title">words</div> -->
-        <div class="buttons">
-          <div class="text-button" wordCount="10" tabindex="2">10</div>
-          <div class="text-button" wordCount="25" tabindex="2">25</div>
-          <div class="text-button active" wordCount="50" tabindex="2">50</div>
-          <div class="text-button" wordCount="100" tabindex="2">100</div>
-          <div class="text-button" wordCount="custom" tabindex="2">
-            <i class="fas fa-tools"></i>
-          </div>
-        </div>
-      </div>
-      <div class="group time">
-        <!--           <div class="title">time</div> -->
-        <div class="buttons">
-          <div class="text-button" timeConfig="15" tabindex="2">15</div>
-          <div class="text-button active" timeConfig="30" tabindex="2">30</div>
-          <div class="text-button" timeConfig="60" tabindex="2">60</div>
-          <div class="text-button" timeConfig="120" tabindex="2">120</div>
-          <div class="text-button" timeConfig="custom" tabindex="2">
-            <i class="fas fa-tools"></i>
-          </div>
-        </div>
-      </div>
-      <div class="group quoteLength hidden">
-        <!--           <div class="title">time</div> -->
-        <div class="buttons">
-          <div class="text-button" quoteLength="-1" tabindex="2">all</div>
-          <div class="text-button" quoteLength="0" tabindex="2">short</div>
-          <div class="text-button active" quoteLength="1" tabindex="2">
-            medium
-          </div>
-          <div class="text-button" quoteLength="2" tabindex="2">long</div>
-          <div class="text-button" quoteLength="3" tabindex="2">thicc</div>
-          <div
-            class="text-button hidden favorite"
-            quoteLength="-3"
-            tabindex="2"
-          >
-            <i class="fas fa-heart"></i>
-          </div>
-          <div class="text-button" quoteLength="-2" tabindex="2">
-            <i class="fas fa-search"></i>
-          </div>
-        </div>
-      </div>
-      <div class="group customText hidden">
-        <!--           <div class="title">time</div> -->
-        <div class="buttons">
-          <div class="text-button">change</div>
-        </div>
+    <div class="textButton signInOut" tabindex="2" onclick="this.blur();">
+      <div class="icon">
+        <i class="fas fa-fw fa-sign-in-alt"></i>
       </div>
     </div>
   </div>
-  <div
+  <!-- <div
     class="signOut hidden"
     style="grid-column: 3/4; grid-row: 1/2"
     tabindex="0"
   >
     <i class="fas fa-sign-out-alt"></i>
     sign out
-  </div>
+  </div> -->
 </div>

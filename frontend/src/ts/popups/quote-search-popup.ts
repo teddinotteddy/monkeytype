@@ -108,7 +108,7 @@ function buildQuoteSearchResult(
     lengthDesc = "thicc";
   }
 
-  const loggedOut = !Auth.currentUser;
+  const loggedOut = !Auth?.currentUser;
   const isFav = !loggedOut && QuotesController.isQuoteFavorite(quote);
 
   return `
@@ -135,13 +135,13 @@ function buildQuoteSearchResult(
       ${highlightMatches(quote.source, matchedSearchTerms)}
     </div>
 
-    <div class="text-button report ${
+    <div class="textButton report ${
       loggedOut && "hidden"
     }" aria-label="Report quote" data-balloon-pos="left">
       <i class="fas fa-flag report"></i>
     </div>
 
-    <div class="text-button favorite ${
+    <div class="textButton favorite ${
       loggedOut && "hidden"
     }" aria-label="Favorite quote" data-balloon-pos="left">
       <i class="${isFav ? "fas" : "far"} fa-heart favorite"></i>
@@ -193,7 +193,7 @@ export async function show(clearText = true): Promise<void> {
 
     const quoteSearchInputValue = $("#quoteSearchPopup input").val() as string;
 
-    if (!Auth.currentUser) {
+    if (!Auth?.currentUser) {
       $("#quoteSearchPopup #gotoSubmitQuoteButton").addClass("hidden");
       $("#quoteSearchPopup #toggleShowFavorites").addClass("hidden");
     } else {
@@ -242,7 +242,7 @@ export async function show(clearText = true): Promise<void> {
       .removeClass("hidden")
       .animate({ opacity: 1 }, 100, () => {
         if (clearText) {
-          $("#quoteSearchPopup input").trigger("focus").select();
+          $("#quoteSearchPopup input").trigger("focus").trigger("select");
         }
         updateResults(quoteSearchInputValue);
       });
@@ -311,17 +311,17 @@ $("#quoteSearchPopupWrapper").on("click", (e) => {
   }
 });
 
-$(document).on("click", "#quoteSearchPopup #gotoSubmitQuoteButton", () => {
+$("#popups").on("click", "#quoteSearchPopup #gotoSubmitQuoteButton", () => {
   hide(true);
   QuoteSubmitPopup.show(true);
 });
 
-$(document).on("click", "#quoteSearchPopup #goToApproveQuotes", () => {
+$("#popups").on("click", "#quoteSearchPopup #goToApproveQuotes", () => {
   hide(true);
   QuoteApprovePopup.show(true);
 });
 
-$(document).on("click", "#quoteSearchPopup .report", async (e) => {
+$("#popups").on("click", "#quoteSearchPopup .report", async (e) => {
   const quoteId = e.target.closest(".searchResult").id;
   const quoteIdSelectedForReport = parseInt(quoteId);
 
@@ -335,9 +335,9 @@ $(document).on("click", "#quoteSearchPopup .report", async (e) => {
   });
 });
 
-$(document).on(
+$("#popups").on(
   "click",
-  "#quoteSearchPopup .text-button.favorite",
+  "#quoteSearchPopup .textButton.favorite",
   async (e) => {
     const quoteLang = Config.language;
     const quoteId = e.target.closest(".searchResult").id as string;
@@ -348,9 +348,10 @@ $(document).on(
     }
 
     const $button = $(
-      `#quoteSearchPopup .searchResult[id=${quoteId}] .text-button.favorite i`
+      `#quoteSearchPopup .searchResult[id=${quoteId}] .textButton.favorite i`
     );
     const dbSnapshot = DB.getSnapshot();
+    if (!dbSnapshot) return;
 
     if ($button.hasClass("fas")) {
       // Remove from favorites
@@ -389,8 +390,8 @@ $(document).on(
   }
 );
 
-$(document).on("click", "#toggleShowFavorites", (e) => {
-  if (!Auth.currentUser) {
+$("#popups").on("click", "#quoteSearchPopup #toggleShowFavorites", (e) => {
+  if (!Auth?.currentUser) {
     // Notifications.add("You need to be logged in to use this feature!", 0);
     return;
   }
@@ -399,7 +400,7 @@ $(document).on("click", "#toggleShowFavorites", (e) => {
   searchForQuotes();
 });
 
-$(document).on("click", "#top .config .quoteLength .text-button", (e) => {
+$(".pageTest").on("click", "#testConfig .quoteLength .textButton", (e) => {
   const len = $(e.currentTarget).attr("quoteLength") ?? (0 as number);
   if (len == -2) {
     show();

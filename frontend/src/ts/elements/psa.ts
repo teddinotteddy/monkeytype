@@ -2,6 +2,7 @@ import Ape from "../ape";
 import { secondsToString } from "../utils/misc";
 import * as Notifications from "./notifications";
 import format from "date-fns/format";
+import * as Alerts from "./alerts";
 
 function clearMemory(): void {
   window.localStorage.setItem("confirmedPSAs", JSON.stringify([]));
@@ -17,32 +18,53 @@ function setMemory(id: string): void {
   window.localStorage.setItem("confirmedPSAs", JSON.stringify(list));
 }
 
-async function getLatest(): Promise<MonkeyTypes.PSA[]> {
+async function getLatest(): Promise<MonkeyTypes.PSA[] | null> {
   const response = await Ape.psas.get();
-  if (response.message === "Server is down for maintenance") {
+  if (response.status === 500) {
+    if (window.location.hostname === "localhost") {
+      Notifications.addBanner(
+        "Dev Info: Backend server not running",
+        0,
+        "exclamation-triangle",
+        false
+      );
+    } else {
+      Notifications.addBanner(
+        "Looks like the server is experiencing maintenance or some unexpected down time.<br>Check the <a target= '_blank' href='https://monkeytype.instatus.com/'>status page</a> or <a target= '_blank' href='https://twitter.com/monkeytypegame'>Twitter</a> for more information.",
+        -1,
+        "exclamation-triangle",
+        false,
+        undefined,
+        true
+      );
+    }
+
+    return null;
+  } else if (response.status === 503) {
     Notifications.addBanner(
       "Server is currently under maintenance. <a target= '_blank' href='https://monkeytype.instatus.com/'>Check the status page</a> for more info.",
       -1,
       "bullhorn",
+      true,
+      undefined,
       true
     );
-    return [];
+    return null;
+  } else if (response.status !== 200) {
+    return null;
   }
   return response.data as MonkeyTypes.PSA[];
 }
 
 export async function show(): Promise<void> {
   const latest = await getLatest();
-  if (latest == null || latest.length == 0) {
+  if (latest === null) return;
+  if (latest.length == 0) {
     clearMemory();
     return;
   }
   const localmemory = getMemory();
   latest.forEach((psa) => {
-    if (localmemory.includes(psa._id) && (psa.sticky ?? false) === false) {
-      return;
-    }
-
     if (psa.date) {
       const dateObj = new Date(psa.date);
       const diff = psa.date - Date.now();
@@ -65,6 +87,12 @@ export async function show(): Promise<void> {
       );
     }
 
+    Alerts.addPSA(psa.message, psa.level ?? -1);
+
+    if (localmemory.includes(psa._id) && (psa.sticky ?? false) === false) {
+      return;
+    }
+
     Notifications.addBanner(
       psa.message,
       psa.level,
@@ -72,7 +100,8 @@ export async function show(): Promise<void> {
       psa.sticky,
       () => {
         setMemory(psa._id);
-      }
+      },
+      true
     );
   });
 }

@@ -53,6 +53,31 @@
     "tostring",
     "type",
     "unpack",
-    "xpcall"
+    "xpcall",
+
+    "wait",
+    "delay",
+    "elapsedTime",
+    "debuggermanager",
+    "pluginmanager",
+    "printidentity",
+    "settings",
+    "spawn",
+    "stats",
+    "tick",
+    "time",
+    "usersettings",
+    "version",
+    "warn",
+
+    "bit32",
+    "coroutine",
+    "debug",
+    "math",
+    "os",
+    "string",
+    "table",
+    "task",
+    "utf8"
   ]
 }

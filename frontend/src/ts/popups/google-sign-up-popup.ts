@@ -12,14 +12,21 @@ import * as LoginPage from "../pages/login";
 import * as AllTimeStats from "../account/all-time-stats";
 import * as AccountController from "../controllers/account-controller";
 import * as TestLogic from "../test/test-logic";
+import * as CaptchaController from "../controllers/captcha-controller";
 import * as DB from "../db";
 import * as Loader from "../elements/loader";
 import { subscribe as subscribeToSignUpEvent } from "../observables/google-sign-up-event";
+import { InputIndicator } from "../elements/input-indicator";
 
 let signedInUser: UserCredential | undefined = undefined;
 
 export function show(credential: UserCredential): void {
   if ($("#googleSignUpPopupWrapper").hasClass("hidden")) {
+    CaptchaController.reset("googleSignUpPopup");
+    CaptchaController.render(
+      $("#googleSignUpPopupWrapper .captcha")[0],
+      "googleSignUpPopup"
+    );
     enableInput();
     disableButton();
     signedInUser = credential;
@@ -28,7 +35,7 @@ export function show(credential: UserCredential): void {
       .css("opacity", 0)
       .removeClass("hidden")
       .animate({ opacity: 1 }, 100, () => {
-        $("#googleSignUpPopup input").trigger("focus").select();
+        $("#googleSignUpPopup input").trigger("focus").trigger("select");
       });
   }
 }
@@ -63,19 +70,27 @@ export async function hide(): Promise<void> {
 
 async function apply(): Promise<void> {
   if ($("#googleSignUpPopup .button").hasClass("disabled")) return;
-  disableInput();
-  disableButton();
+
   if (!signedInUser) {
     return Notifications.add(
       "Missing user credential. Please close the popup and try again.",
       -1
     );
   }
+
+  const captcha = CaptchaController.getResponse("googleSignUpPopup");
+  if (!captcha) {
+    return Notifications.add("Please complete the captcha", -1);
+  }
+
+  disableInput();
+  disableButton();
+
   Loader.show();
   const name = $("#googleSignUpPopup input").val() as string;
   try {
     if (name.length === 0) throw new Error("Name cannot be empty");
-    const response = await Ape.users.create(name);
+    const response = await Ape.users.create(name, captcha);
     if (response.status !== 200) {
       throw response;
     }
@@ -85,7 +100,7 @@ async function apply(): Promise<void> {
       await sendEmailVerification(signedInUser.user);
       AllTimeStats.clear();
       Notifications.add("Account created", 1, 3);
-      $("#menu .text-button.account .text").text(name);
+      $("#menu .textButton.account .text").text(name);
       LoginPage.enableInputs();
       LoginPage.hidePreloader();
       await AccountController.loadUser(signedInUser.user);
@@ -99,13 +114,12 @@ async function apply(): Promise<void> {
         if (resultsSaveResponse.status === 200) {
           const result = TestLogic.notSignedInLastResult;
           DB.saveLocalResult(result);
-          DB.updateLocalStats({
-            time:
-              result.testDuration +
+          DB.updateLocalStats(
+            1,
+            result.testDuration +
               result.incompleteTestSeconds -
-              result.afkDuration,
-            started: 1,
-          });
+              result.afkDuration
+          );
         }
       }
       signedInUser = undefined;
@@ -118,6 +132,8 @@ async function apply(): Promise<void> {
     Notifications.add(message, -1);
     LoginPage.hidePreloader();
     LoginPage.enableInputs();
+    LoginPage.enableSignInButton();
+    LoginPage.enableSignUpButton();
     if (signedInUser && getAdditionalUserInfo(signedInUser)?.isNewUser) {
       await Ape.users.delete();
       await signedInUser.user.delete();
@@ -127,27 +143,6 @@ async function apply(): Promise<void> {
     hide();
     Loader.hide();
     return;
-  }
-}
-
-function updateIndicator(
-  state: "checking" | "available" | "unavailable" | "taken" | "none",
-  balloon?: string
-): void {
-  $("#googleSignUpPopup .checkStatus .checking").addClass("hidden");
-  $("#googleSignUpPopup .checkStatus .available").addClass("hidden");
-  $("#googleSignUpPopup .checkStatus .unavailable").addClass("hidden");
-  $("#googleSignUpPopup .checkStatus .taken").addClass("hidden");
-  if (state !== "none") {
-    $("#googleSignUpPopup .checkStatus ." + state).removeClass("hidden");
-    if (balloon) {
-      $("#googleSignUpPopup .checkStatus ." + state).attr(
-        "aria-label",
-        balloon
-      );
-    } else {
-      $("#googleSignUpPopup .checkStatus ." + state).removeAttr("aria-label");
-    }
   }
 }
 
@@ -173,29 +168,49 @@ $("#googleSignUpPopupWrapper").on("mousedown", (e) => {
   }
 });
 
+const nameIndicator = new InputIndicator($("#googleSignUpPopup input"), {
+  available: {
+    icon: "fa-check",
+    level: 1,
+  },
+  unavailable: {
+    icon: "fa-times",
+    level: -1,
+  },
+  taken: {
+    icon: "fa-times",
+    level: -1,
+  },
+  checking: {
+    icon: "fa-circle-notch",
+    spinIcon: true,
+    level: 0,
+  },
+});
+
 const checkNameDebounced = debounce(1000, async () => {
   const val = $("#googleSignUpPopup input").val() as string;
   if (!val) return;
   const response = await Ape.users.getNameAvailability(val);
 
   if (response.status === 200) {
-    updateIndicator("available", response.message);
+    nameIndicator.show("available", response.message);
     enableButton();
     return;
   }
 
   if (response.status == 422) {
-    updateIndicator("unavailable", response.message);
+    nameIndicator.show("unavailable", response.message);
     return;
   }
 
   if (response.status == 409) {
-    updateIndicator("taken", response.message);
+    nameIndicator.show("taken", response.message);
     return;
   }
 
   if (response.status !== 200) {
-    updateIndicator("unavailable");
+    nameIndicator.show("unavailable");
     return Notifications.add(
       "Failed to check name availability: " + response.message,
       -1
@@ -208,9 +223,9 @@ $("#googleSignUpPopup input").on("input", () => {
     disableButton();
     const val = $("#googleSignUpPopup input").val() as string;
     if (val === "") {
-      return updateIndicator("none");
+      return nameIndicator.hide();
     } else {
-      updateIndicator("checking");
+      nameIndicator.show("checking");
       checkNameDebounced();
     }
   }, 1);

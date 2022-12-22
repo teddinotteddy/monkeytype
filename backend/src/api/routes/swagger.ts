@@ -6,7 +6,7 @@ import publicSwaggerSpec from "../../documentation/public-swagger.json";
 import internalSwaggerSpec from "../../documentation/internal-swagger.json";
 
 const SWAGGER_UI_OPTIONS = {
-  customCss: ".swagger-ui .topbar { display: none }",
+  customCss: ".swagger-ui .topbar { display: none } .try-out { display: none }",
   customSiteTitle: "Monkeytype API Documentation",
 };
 
@@ -23,17 +23,6 @@ function addSwaggerMiddlewares(app: Application): void {
           username === process.env.STATS_USERNAME &&
           password === process.env.STATS_PASSWORD
         );
-      },
-      onResponseFinish: (_req, res, rrr) => {
-        //@ts-ignore ignored because monkeyMessage doesnt exist in response
-        rrr.http.response.message = res.monkeyMessage;
-        if (process.env.MODE === "dev") {
-          return;
-        }
-        const authHeader = rrr.http.request.headers?.authorization ?? "None";
-        const authType = authHeader.split(" ");
-        _.set(rrr.http.request, "headers.authorization", authType[0]);
-        _.set(rrr.http.request, "headers['x-forwarded-for']", "");
       },
     })
   );

@@ -3,8 +3,6 @@ const CopyPlugin = require("copy-webpack-plugin");
 const CircularDependencyPlugin = require("circular-dependency-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const RemovePlugin = require("remove-files-webpack-plugin");
-const ExtraWatchWebpackPlugin = require("extra-watch-webpack-plugin");
 
 let circularImports = 0;
 
@@ -13,7 +11,6 @@ const htmlWebpackPlugins = [
   "security-policy",
   "privacy-policy",
   "email-handler",
-  "das",
 ].map((name) => {
   return new HtmlWebpackPlugin({
     filename: `${name}.html`,
@@ -29,6 +26,7 @@ const BASE_CONFIG = {
   },
   resolve: { extensions: [".ts", ".js"] },
   output: {
+    publicPath: "/",
     filename: "./js/[name].[chunkhash:8].js",
     path: resolve(__dirname, "../public/"),
     clean: true,
@@ -113,14 +111,6 @@ const BASE_CONFIG = {
     ...htmlWebpackPlugins,
     new MiniCssExtractPlugin({
       filename: "./css/style.[chunkhash:8].css",
-    }),
-    new RemovePlugin({
-      after: {
-        include: [resolve(__dirname, "../public/html")],
-      },
-    }),
-    new ExtraWatchWebpackPlugin({
-      dirs: [resolve(__dirname, "../static/html")],
     }),
   ],
 };

@@ -8,13 +8,13 @@ import * as AllTimeStats from "../account/all-time-stats";
 import * as PbTables from "../account/pb-tables";
 import * as LoadingPage from "./loading";
 import * as Focus from "../test/focus";
-import * as SignOutButton from "../account/sign-out-button";
 import * as TodayTracker from "../test/today-tracker";
 import * as Notifications from "../elements/notifications";
 import Page from "./page";
 import * as Misc from "../utils/misc";
-import * as ActivePage from "../states/active-page";
+import * as Profile from "../elements/profile";
 import format from "date-fns/format";
+import * as ConnectionState from "../states/connection";
 
 import type { ScaleChartOptions } from "chart.js";
 
@@ -31,7 +31,7 @@ let filteredResults: MonkeyTypes.Result<MonkeyTypes.Mode>[] = [];
 let visibleTableLines = 0;
 
 function loadMoreLines(lineIndex?: number): void {
-  if (filteredResults == [] || filteredResults.length == 0) return;
+  if (!filteredResults || filteredResults.length == 0) return;
   let newVisibleLines;
   if (lineIndex && lineIndex > visibleTableLines) {
     newVisibleLines = Math.ceil(lineIndex / 10) * 10;
@@ -72,11 +72,11 @@ function loadMoreLines(lineIndex?: number): void {
     }
 
     if (result.punctuation) {
-      icons += `<span aria-label="punctuation" data-balloon-pos="up" style="font-weight:900">!?</span>`;
+      icons += `<span aria-label="punctuation" data-balloon-pos="up"><i class="fas fa-fw fa-at"></i></span>`;
     }
 
     if (result.numbers) {
-      icons += `<span aria-label="numbers" data-balloon-pos="up" style="font-weight:900">15</span>`;
+      icons += `<span aria-label="numbers" data-balloon-pos="up"><i class="fas fa-fw fa-hashtag"></i></span>`;
     }
 
     if (result.blindMode) {
@@ -88,10 +88,12 @@ function loadMoreLines(lineIndex?: number): void {
     }
 
     if (result.funbox !== "none" && result.funbox !== undefined) {
-      icons += `<span aria-label="${result.funbox.replace(
-        /_/g,
-        " "
-      )}" data-balloon-pos="up"><i class="fas fa-gamepad"></i></span>`;
+      icons += `<span aria-label="${result.funbox
+        .replace(/_/g, " ")
+        .replace(
+          /#/g,
+          ", "
+        )}" data-balloon-pos="up"><i class="fas fa-gamepad"></i></span>`;
     }
 
     if (result.chartData === undefined) {
@@ -106,7 +108,7 @@ function loadMoreLines(lineIndex?: number): void {
 
     if (result.tags !== undefined && result.tags.length > 0) {
       result.tags.forEach((tag) => {
-        DB.getSnapshot().tags?.forEach((snaptag) => {
+        DB.getSnapshot()?.tags?.forEach((snaptag) => {
           if (tag === snaptag._id) {
             tagNames += snaptag.display + ", ";
           }
@@ -179,10 +181,12 @@ function loadMoreLines(lineIndex?: number): void {
 
 export function reset(): void {
   $(".pageAccount .history table tbody").empty();
+  ChartController.accountHistogram.data.datasets[0].data = [];
   ChartController.accountActivity.data.datasets[0].data = [];
   ChartController.accountActivity.data.datasets[1].data = [];
   ChartController.accountHistory.data.datasets[0].data = [];
   ChartController.accountHistory.data.datasets[1].data = [];
+  ChartController.accountHistogram.updateColors();
   ChartController.accountActivity.updateColors();
   ChartController.accountHistory.updateColors();
 }
@@ -229,660 +233,793 @@ function applyHistorySmoothing(): void {
   smoothHistory(parseInt(smoothing));
 }
 
-export function update(): void {
-  function cont(): void {
-    LoadingPage.updateText("Displaying stats...");
-    LoadingPage.updateBar(100);
-    console.log("updating account page");
-    ThemeColors.update();
-    ChartController.accountHistory.updateColors();
-    ChartController.accountActivity.updateColors();
-    AllTimeStats.update();
+function fillContent(): void {
+  LoadingPage.updateText("Displaying stats...");
+  LoadingPage.updateBar(100);
+  console.log("updating account page");
+  ThemeColors.update();
+  ChartController.accountHistory.updateColors();
+  ChartController.accountActivity.updateColors();
+  ChartController.accountHistogram.updateColors();
+  AllTimeStats.update();
 
-    PbTables.update();
+  const snapshot = DB.getSnapshot();
+  if (!snapshot) return;
 
-    chartData = [];
-    accChartData = [];
-    const wpmChartData: number[] = [];
-    visibleTableLines = 0;
+  PbTables.update(snapshot.personalBests);
+  Profile.update("account", snapshot);
 
-    let topWpm = 0;
-    let topMode = "";
-    let testRestarts = 0;
-    let totalWpm = 0;
-    let testCount = 0;
+  chartData = [];
+  accChartData = [];
+  const wpmChartData: number[] = [];
+  visibleTableLines = 0;
 
-    let last10 = 0;
-    let wpmLast10total = 0;
+  let topWpm = 0;
+  let topMode = "";
+  let testRestarts = 0;
+  let totalWpm = 0;
+  let testCount = 0;
 
-    let topAcc = 0;
-    let totalAcc = 0;
-    let totalAcc10 = 0;
+  let last10 = 0;
+  let wpmLast10total = 0;
 
-    const rawWpm = {
-      total: 0,
-      count: 0,
-      last10Total: 0,
-      last10Count: 0,
-      max: 0,
+  let topAcc = 0;
+  let totalAcc = 0;
+  let totalAcc10 = 0;
+
+  const rawWpm = {
+    total: 0,
+    count: 0,
+    last10Total: 0,
+    last10Count: 0,
+    max: 0,
+  };
+
+  let totalEstimatedWords = 0;
+
+  // let totalSeconds = 0;
+  totalSecondsFiltered = 0;
+
+  let topCons = 0;
+  let totalCons = 0;
+  let totalCons10 = 0;
+  let consCount = 0;
+
+  interface ActivityChartData {
+    [key: number]: {
+      amount: number;
+      time: number;
+      totalWpm: number;
     };
-
-    // let totalSeconds = 0;
-    totalSecondsFiltered = 0;
-
-    let topCons = 0;
-    let totalCons = 0;
-    let totalCons10 = 0;
-    let consCount = 0;
-
-    type ActivityChartData = {
-      [key: number]: {
-        amount: number;
-        time: number;
-        totalWpm: number;
-      };
-    };
-
-    const activityChartData: ActivityChartData = {};
-
-    filteredResults = [];
-    $(".pageAccount .history table tbody").empty();
-    DB.getSnapshot().results?.forEach(
-      (result: MonkeyTypes.Result<MonkeyTypes.Mode>) => {
-        // totalSeconds += tt;
-
-        //apply filters
-        try {
-          let resdiff = result.difficulty;
-          if (resdiff == undefined) {
-            resdiff = "normal";
-          }
-          if (!ResultFilters.getFilter("difficulty", resdiff)) {
-            if (filterDebug) {
-              console.log(`skipping result due to difficulty filter`, result);
-            }
-            return;
-          }
-          if (!ResultFilters.getFilter("mode", result.mode)) {
-            if (filterDebug) {
-              console.log(`skipping result due to mode filter`, result);
-            }
-            return;
-          }
-
-          if (result.mode == "time") {
-            let timefilter: MonkeyTypes.Mode2Custom<"time"> = "custom";
-            if ([15, 30, 60, 120].includes(parseInt(result.mode2 as string))) {
-              timefilter = result.mode2;
-            }
-            if (!ResultFilters.getFilter("time", timefilter)) {
-              if (filterDebug) {
-                console.log(`skipping result due to time filter`, result);
-              }
-              return;
-            }
-          } else if (result.mode == "words") {
-            let wordfilter: MonkeyTypes.Mode2Custom<"words"> = "custom";
-            if (
-              [10, 25, 50, 100, 200].includes(parseInt(result.mode2 as string))
-            ) {
-              wordfilter = result.mode2;
-            }
-            if (!ResultFilters.getFilter("words", wordfilter)) {
-              if (filterDebug) {
-                console.log(`skipping result due to word filter`, result);
-              }
-              return;
-            }
-          }
-
-          if (result.quoteLength != null) {
-            let filter: MonkeyTypes.QuoteModes | undefined = undefined;
-            if (result.quoteLength === 0) {
-              filter = "short";
-            } else if (result.quoteLength === 1) {
-              filter = "medium";
-            } else if (result.quoteLength === 2) {
-              filter = "long";
-            } else if (result.quoteLength === 3) {
-              filter = "thicc";
-            }
-            if (
-              filter !== undefined &&
-              !ResultFilters.getFilter("quoteLength", filter)
-            ) {
-              if (filterDebug) {
-                console.log(
-                  `skipping result due to quoteLength filter`,
-                  result
-                );
-              }
-              return;
-            }
-          }
-
-          let langFilter = ResultFilters.getFilter(
-            "language",
-            result.language ?? "english"
-          );
-
-          if (
-            result.language === "english_expanded" &&
-            ResultFilters.getFilter("language", "english_1k")
-          ) {
-            langFilter = true;
-          }
-          if (!langFilter) {
-            if (filterDebug) {
-              console.log(`skipping result due to language filter`, result);
-            }
-            return;
-          }
-
-          let puncfilter: MonkeyTypes.Filter<"punctuation"> = "off";
-          if (result.punctuation) {
-            puncfilter = "on";
-          }
-          if (!ResultFilters.getFilter("punctuation", puncfilter)) {
-            if (filterDebug) {
-              console.log(`skipping result due to punctuation filter`, result);
-            }
-            return;
-          }
-
-          let numfilter: MonkeyTypes.Filter<"numbers"> = "off";
-          if (result.numbers) {
-            numfilter = "on";
-          }
-          if (!ResultFilters.getFilter("numbers", numfilter)) {
-            if (filterDebug) {
-              console.log(`skipping result due to numbers filter`, result);
-            }
-            return;
-          }
-
-          if (result.funbox === "none" || result.funbox === undefined) {
-            if (!ResultFilters.getFilter("funbox", "none")) {
-              if (filterDebug) {
-                console.log(`skipping result due to funbox filter`, result);
-              }
-              return;
-            }
-          } else {
-            if (!ResultFilters.getFilter("funbox", result.funbox)) {
-              if (filterDebug) {
-                console.log(`skipping result due to funbox filter`, result);
-              }
-              return;
-            }
-          }
-
-          let tagHide = true;
-          if (result.tags === undefined || result.tags.length === 0) {
-            //no tags, show when no tag is enabled
-            if (DB.getSnapshot().tags?.length || 0 > 0) {
-              if (ResultFilters.getFilter("tags", "none")) tagHide = false;
-            } else {
-              tagHide = false;
-            }
-          } else {
-            //tags exist
-            const validTags = DB.getSnapshot().tags?.map((t) => t._id);
-
-            if (validTags === undefined) return;
-
-            result.tags.forEach((tag) => {
-              //check if i even need to check tags anymore
-              if (!tagHide) return;
-              //check if tag is valid
-              if (validTags?.includes(tag)) {
-                //tag valid, check if filter is on
-                if (ResultFilters.getFilter("tags", tag)) tagHide = false;
-              } else {
-                //tag not found in valid tags, meaning probably deleted
-                if (ResultFilters.getFilter("tags", "none")) tagHide = false;
-              }
-            });
-          }
-
-          if (tagHide) {
-            if (filterDebug) {
-              console.log(`skipping result due to tag filter`, result);
-            }
-            return;
-          }
-
-          const timeSinceTest = Math.abs(result.timestamp - Date.now()) / 1000;
-
-          let datehide = true;
-
-          if (
-            ResultFilters.getFilter("date", "all") ||
-            (ResultFilters.getFilter("date", "last_day") &&
-              timeSinceTest <= 86400) ||
-            (ResultFilters.getFilter("date", "last_week") &&
-              timeSinceTest <= 604800) ||
-            (ResultFilters.getFilter("date", "last_month") &&
-              timeSinceTest <= 2592000) ||
-            (ResultFilters.getFilter("date", "last_3months") &&
-              timeSinceTest <= 7776000)
-          ) {
-            datehide = false;
-          }
-
-          if (datehide) {
-            if (filterDebug) {
-              console.log(`skipping result due to date filter`, result);
-            }
-            return;
-          }
-
-          filteredResults.push(result);
-        } catch (e) {
-          Notifications.add(
-            "Something went wrong when filtering. Resetting filters.",
-            0
-          );
-          console.log(result);
-          console.error(e);
-          ResultFilters.reset();
-          ResultFilters.updateActive();
-          update();
-        }
-        //filters done
-        //=======================================
-
-        const resultDate = new Date(result.timestamp);
-        resultDate.setSeconds(0);
-        resultDate.setMinutes(0);
-        resultDate.setHours(0);
-        resultDate.setMilliseconds(0);
-        const resultTimestamp = resultDate.getTime();
-
-        if (Object.keys(activityChartData).includes(String(resultTimestamp))) {
-          activityChartData[resultTimestamp].amount++;
-          activityChartData[resultTimestamp].time +=
-            result.testDuration +
-            result.incompleteTestSeconds -
-            (result.afkDuration ?? 0);
-          activityChartData[resultTimestamp].totalWpm += result.wpm;
-        } else {
-          activityChartData[resultTimestamp] = {
-            amount: 1,
-            time:
-              result.testDuration +
-              result.incompleteTestSeconds -
-              (result.afkDuration ?? 0),
-            totalWpm: result.wpm,
-          };
-        }
-
-        let tt = 0;
-        if (
-          result.testDuration == undefined &&
-          result.mode2 !== "custom" &&
-          result.mode2 !== "zen"
-        ) {
-          //test finished before testDuration field was introduced - estimate
-          if (result.mode == "time") {
-            tt = result.mode2;
-          } else if (result.mode == "words") {
-            tt = (result.mode2 / result.wpm) * 60;
-          }
-        } else {
-          tt = parseFloat(result.testDuration as unknown as string); //legacy results could have a string here
-        }
-        if (result.incompleteTestSeconds != undefined) {
-          tt += result.incompleteTestSeconds;
-        } else if (
-          result.restartCount != undefined &&
-          result.restartCount > 0
-        ) {
-          tt += (tt / 4) * result.restartCount;
-        }
-
-        // if (result.incompleteTestSeconds != undefined) {
-        //   tt += result.incompleteTestSeconds;
-        // } else if (result.restartCount != undefined && result.restartCount > 0) {
-        //   tt += (tt / 4) * result.restartCount;
-        // }
-        totalSecondsFiltered += tt;
-
-        if (last10 < 10) {
-          last10++;
-          wpmLast10total += result.wpm;
-          totalAcc10 += result.acc;
-          result.consistency !== undefined
-            ? (totalCons10 += result.consistency)
-            : 0;
-        }
-        testCount++;
-
-        if (result.consistency !== undefined) {
-          consCount++;
-          totalCons += result.consistency;
-          if (result.consistency > topCons) {
-            topCons = result.consistency;
-          }
-        }
-
-        if (result.rawWpm != null) {
-          if (rawWpm.last10Count < 10) {
-            rawWpm.last10Count++;
-            rawWpm.last10Total += result.rawWpm;
-          }
-          rawWpm.total += result.rawWpm;
-          rawWpm.count++;
-          if (result.rawWpm > rawWpm.max) {
-            rawWpm.max = result.rawWpm;
-          }
-        }
-
-        if (result.acc > topAcc) {
-          topAcc = result.acc;
-        }
-
-        totalAcc += result.acc;
-
-        if (result.restartCount != undefined) {
-          testRestarts += result.restartCount;
-        }
-
-        chartData.push({
-          x: result.timestamp,
-          y: Config.alwaysShowCPM ? Misc.roundTo2(result.wpm * 5) : result.wpm,
-          wpm: Config.alwaysShowCPM
-            ? Misc.roundTo2(result.wpm * 5)
-            : result.wpm,
-          acc: result.acc,
-          mode: result.mode,
-          mode2: result.mode2,
-          punctuation: result.punctuation as boolean,
-          language: result.language,
-          timestamp: result.timestamp,
-          difficulty: result.difficulty,
-          raw: Config.alwaysShowCPM
-            ? Misc.roundTo2(result.rawWpm * 5)
-            : result.rawWpm,
-        });
-
-        wpmChartData.push(result.wpm);
-
-        accChartData.push({
-          x: result.timestamp,
-          y: 100 - result.acc,
-          errorRate: 100 - result.acc,
-        });
-
-        if (result.wpm > topWpm) {
-          const puncsctring = result.punctuation ? ",<br>with punctuation" : "";
-          const numbsctring = result.numbers
-            ? ",<br> " + (result.punctuation ? "&" : "") + "with numbers"
-            : "";
-          topWpm = result.wpm;
-          if (result.mode == "custom") topMode = result.mode;
-          else {
-            topMode =
-              result.mode + " " + result.mode2 + puncsctring + numbsctring;
-          }
-        }
-
-        totalWpm += result.wpm;
-      }
-    );
-
-    if (Config.alwaysShowCPM) {
-      $(".pageAccount .group.history table thead tr td:nth-child(2)").text(
-        "cpm"
-      );
-    } else {
-      $(".pageAccount .group.history table thead tr td:nth-child(2)").text(
-        "wpm"
-      );
-    }
-
-    loadMoreLines();
-    ////////
-
-    const activityChartData_amount: MonkeyTypes.ActivityChartDataPoint[] = [];
-    const activityChartData_time: MonkeyTypes.ActivityChartDataPoint[] = [];
-    const activityChartData_avgWpm: MonkeyTypes.ActivityChartDataPoint[] = [];
-    // let lastTimestamp = 0;
-    Object.keys(activityChartData).forEach((date) => {
-      const dateInt = parseInt(date);
-      activityChartData_amount.push({
-        x: dateInt,
-        y: activityChartData[dateInt].amount,
-      });
-      activityChartData_time.push({
-        x: dateInt,
-        y: Misc.roundTo2(activityChartData[dateInt].time),
-        amount: activityChartData[dateInt].amount,
-      });
-      activityChartData_avgWpm.push({
-        x: dateInt,
-        y: Misc.roundTo2(
-          (Config.alwaysShowCPM
-            ? activityChartData[dateInt].totalWpm * 5
-            : activityChartData[dateInt].totalWpm) /
-            activityChartData[dateInt].amount
-        ),
-      });
-      // lastTimestamp = date;
-    });
-
-    const accountActivityScaleOptions = (
-      ChartController.accountActivity.options as ScaleChartOptions<
-        "bar" | "line"
-      >
-    ).scales;
-
-    if (Config.alwaysShowCPM) {
-      accountActivityScaleOptions["avgWpm"].title.text = "Average Cpm";
-    } else {
-      accountActivityScaleOptions["avgWpm"].title.text = "Average Wpm";
-    }
-
-    ChartController.accountActivity.data.datasets[0].data =
-      activityChartData_time;
-    ChartController.accountActivity.data.datasets[1].data =
-      activityChartData_avgWpm;
-
-    const accountHistoryScaleOptions = (
-      ChartController.accountHistory.options as ScaleChartOptions<"line">
-    ).scales;
-
-    if (Config.alwaysShowCPM) {
-      accountHistoryScaleOptions["wpm"].title.text = "Characters per Minute";
-    } else {
-      accountHistoryScaleOptions["wpm"].title.text = "Words per Minute";
-    }
-
-    ChartController.accountHistory.data.datasets[0].data = chartData;
-    ChartController.accountHistory.data.datasets[1].data = accChartData;
-
-    const wpms = chartData.map((r) => r.y);
-    const minWpmChartVal = Math.min(...wpms);
-    const maxWpmChartVal = Math.max(...wpms);
-
-    // let accuracies = accChartData.map((r) => r.y);
-    accountHistoryScaleOptions["wpm"].max =
-      Math.floor(maxWpmChartVal) + (10 - (Math.floor(maxWpmChartVal) % 10));
-
-    if (!Config.startGraphsAtZero) {
-      accountHistoryScaleOptions["wpm"].min = Math.floor(minWpmChartVal);
-    } else {
-      accountHistoryScaleOptions["wpm"].min = 0;
-    }
-
-    if (chartData == [] || chartData.length == 0) {
-      $(".pageAccount .group.noDataError").removeClass("hidden");
-      $(".pageAccount .group.chart").addClass("hidden");
-      $(".pageAccount .group.dailyActivityChart").addClass("hidden");
-      $(".pageAccount .group.history").addClass("hidden");
-      $(".pageAccount .triplegroup.stats").addClass("hidden");
-    } else {
-      $(".pageAccount .group.noDataError").addClass("hidden");
-      $(".pageAccount .group.chart").removeClass("hidden");
-      $(".pageAccount .group.dailyActivityChart").removeClass("hidden");
-      $(".pageAccount .group.history").removeClass("hidden");
-      $(".pageAccount .triplegroup.stats").removeClass("hidden");
-    }
-
-    $(".pageAccount .timeTotalFiltered .val").text(
-      Misc.secondsToString(Math.round(totalSecondsFiltered), true, true)
-    );
-
-    if (Config.alwaysShowCPM) {
-      $(".pageAccount .highestWpm .title").text("highest cpm");
-      $(".pageAccount .highestWpm .val").text(Misc.roundTo2(topWpm * 5));
-    } else {
-      $(".pageAccount .highestWpm .title").text("highest wpm");
-      $(".pageAccount .highestWpm .val").text(Misc.roundTo2(topWpm));
-    }
-
-    if (Config.alwaysShowCPM) {
-      $(".pageAccount .averageWpm .title").text("average cpm");
-      $(".pageAccount .averageWpm .val").text(
-        Math.round((totalWpm * 5) / testCount)
-      );
-    } else {
-      $(".pageAccount .averageWpm .title").text("average wpm");
-      $(".pageAccount .averageWpm .val").text(Math.round(totalWpm / testCount));
-    }
-
-    if (Config.alwaysShowCPM) {
-      $(".pageAccount .averageWpm10 .title").text(
-        "average cpm (last 10 tests)"
-      );
-      $(".pageAccount .averageWpm10 .val").text(
-        Math.round((wpmLast10total * 5) / last10)
-      );
-    } else {
-      $(".pageAccount .averageWpm10 .title").text(
-        "average wpm (last 10 tests)"
-      );
-      $(".pageAccount .averageWpm10 .val").text(
-        Math.round(wpmLast10total / last10)
-      );
-    }
-
-    if (Config.alwaysShowCPM) {
-      $(".pageAccount .highestRaw .title").text("highest raw cpm");
-      $(".pageAccount .highestRaw .val").text(Misc.roundTo2(rawWpm.max * 5));
-    } else {
-      $(".pageAccount .highestRaw .title").text("highest raw wpm");
-      $(".pageAccount .highestRaw .val").text(Misc.roundTo2(rawWpm.max));
-    }
-
-    if (Config.alwaysShowCPM) {
-      $(".pageAccount .averageRaw .title").text("average raw cpm");
-      $(".pageAccount .averageRaw .val").text(
-        Math.round((rawWpm.total * 5) / rawWpm.count)
-      );
-    } else {
-      $(".pageAccount .averageRaw .title").text("average raw wpm");
-      $(".pageAccount .averageRaw .val").text(
-        Math.round(rawWpm.total / rawWpm.count)
-      );
-    }
-
-    if (Config.alwaysShowCPM) {
-      $(".pageAccount .averageRaw10 .title").text(
-        "average raw cpm (last 10 tests)"
-      );
-      $(".pageAccount .averageRaw10 .val").text(
-        Math.round((rawWpm.last10Total * 5) / rawWpm.last10Count)
-      );
-    } else {
-      $(".pageAccount .averageRaw10 .title").text(
-        "average raw wpm (last 10 tests)"
-      );
-      $(".pageAccount .averageRaw10 .val").text(
-        Math.round(rawWpm.last10Total / rawWpm.last10Count)
-      );
-    }
-
-    $(".pageAccount .highestWpm .mode").html(topMode);
-    $(".pageAccount .testsTaken .val").text(testCount);
-
-    $(".pageAccount .highestAcc .val").text(topAcc + "%");
-    $(".pageAccount .avgAcc .val").text(Math.round(totalAcc / testCount) + "%");
-    $(".pageAccount .avgAcc10 .val").text(
-      Math.round(totalAcc10 / last10) + "%"
-    );
-
-    if (totalCons == 0 || totalCons == undefined) {
-      $(".pageAccount .avgCons .val").text("-");
-      $(".pageAccount .avgCons10 .val").text("-");
-    } else {
-      $(".pageAccount .highestCons .val").text(topCons + "%");
-      $(".pageAccount .avgCons .val").text(
-        Math.round(totalCons / consCount) + "%"
-      );
-      $(".pageAccount .avgCons10 .val").text(
-        Math.round(totalCons10 / Math.min(last10, consCount)) + "%"
-      );
-    }
-    $(".pageAccount .testsStarted .val").text(`${testCount + testRestarts}`);
-    $(".pageAccount .testsCompleted .val").text(
-      `${testCount}(${Math.floor(
-        (testCount / (testCount + testRestarts)) * 100
-      )}%)`
-    );
-
-    $(".pageAccount .testsCompleted .avgres").text(`
-      ${(testRestarts / testCount).toFixed(1)} restarts per completed test
-    `);
-
-    const wpmPoints = filteredResults.map((r) => r.wpm).reverse();
-
-    const trend = Misc.findLineByLeastSquares(wpmPoints);
-
-    const wpmChange = trend[1][1] - trend[0][1];
-
-    const wpmChangePerHour = wpmChange * (3600 / totalSecondsFiltered);
-
-    const plus = wpmChangePerHour > 0 ? "+" : "";
-
-    $(".pageAccount .group.chart .below .text").text(
-      `Speed change per hour spent typing: ${
-        plus +
-        Misc.roundTo2(
-          Config.alwaysShowCPM ? wpmChangePerHour * 5 : wpmChangePerHour
-        )
-      } ${Config.alwaysShowCPM ? "cpm" : "wpm"}.`
-    );
-
-    applyHistorySmoothing();
-    ChartController.accountActivity.updateColors();
-    LoadingPage.updateBar(100, true);
-    setTimeout(() => {
-      if (ActivePage.get() == "account") SignOutButton.show();
-    }, 125);
-    Focus.set(false);
-    Misc.swapElements(
-      $(".pageAccount .preloader"),
-      $(".pageAccount .content"),
-      250
-    );
   }
-  if (DB.getSnapshot() === null) {
-    Notifications.add(`Missing account data. Please refresh.`, -1);
-    $(".pageAccount .preloader").html("Missing account data. Please refresh.");
-  } else if (DB.getSnapshot().results === undefined) {
-    LoadingPage.updateBar(45, true);
-    DB.getUserResults().then((d: boolean) => {
-      TodayTracker.addAllFromToday();
-      if (d) {
+
+  interface HistogramChartData {
+    [key: string]: number;
+  }
+
+  const activityChartData: ActivityChartData = {};
+
+  const histogramChartData: HistogramChartData = {};
+
+  filteredResults = [];
+  $(".pageAccount .history table tbody").empty();
+  DB.getSnapshot()?.results?.forEach(
+    (result: MonkeyTypes.Result<MonkeyTypes.Mode>) => {
+      // totalSeconds += tt;
+
+      //apply filters
+      try {
+        if (
+          !ResultFilters.getFilter("pb", result.isPb === true ? "yes" : "no")
+        ) {
+          if (filterDebug) {
+            console.log(`skipping result due to pb filter`, result);
+          }
+          return;
+        }
+
+        let resdiff = result.difficulty;
+        if (resdiff == undefined) {
+          resdiff = "normal";
+        }
+        if (!ResultFilters.getFilter("difficulty", resdiff)) {
+          if (filterDebug) {
+            console.log(`skipping result due to difficulty filter`, result);
+          }
+          return;
+        }
+        if (!ResultFilters.getFilter("mode", result.mode)) {
+          if (filterDebug) {
+            console.log(`skipping result due to mode filter`, result);
+          }
+          return;
+        }
+
+        if (result.mode == "time") {
+          let timefilter: MonkeyTypes.Mode2Custom<"time"> = "custom";
+          if ([15, 30, 60, 120].includes(parseInt(result.mode2 as string))) {
+            timefilter = result.mode2;
+          }
+          if (!ResultFilters.getFilter("time", timefilter)) {
+            if (filterDebug) {
+              console.log(`skipping result due to time filter`, result);
+            }
+            return;
+          }
+        } else if (result.mode == "words") {
+          let wordfilter: MonkeyTypes.Mode2Custom<"words"> = "custom";
+          if (
+            [10, 25, 50, 100, 200].includes(parseInt(result.mode2 as string))
+          ) {
+            wordfilter = result.mode2;
+          }
+          if (!ResultFilters.getFilter("words", wordfilter)) {
+            if (filterDebug) {
+              console.log(`skipping result due to word filter`, result);
+            }
+            return;
+          }
+        }
+
+        if (result.quoteLength != null) {
+          let filter: MonkeyTypes.QuoteModes | undefined = undefined;
+          if (result.quoteLength === 0) {
+            filter = "short";
+          } else if (result.quoteLength === 1) {
+            filter = "medium";
+          } else if (result.quoteLength === 2) {
+            filter = "long";
+          } else if (result.quoteLength === 3) {
+            filter = "thicc";
+          }
+          if (
+            filter !== undefined &&
+            !ResultFilters.getFilter("quoteLength", filter)
+          ) {
+            if (filterDebug) {
+              console.log(`skipping result due to quoteLength filter`, result);
+            }
+            return;
+          }
+        }
+
+        let langFilter = ResultFilters.getFilter(
+          "language",
+          result.language ?? "english"
+        );
+
+        if (
+          result.language === "english_expanded" &&
+          ResultFilters.getFilter("language", "english_1k")
+        ) {
+          langFilter = true;
+        }
+        if (!langFilter) {
+          if (filterDebug) {
+            console.log(`skipping result due to language filter`, result);
+          }
+          return;
+        }
+
+        let puncfilter: MonkeyTypes.Filter<"punctuation"> = "off";
+        if (result.punctuation) {
+          puncfilter = "on";
+        }
+        if (!ResultFilters.getFilter("punctuation", puncfilter)) {
+          if (filterDebug) {
+            console.log(`skipping result due to punctuation filter`, result);
+          }
+          return;
+        }
+
+        let numfilter: MonkeyTypes.Filter<"numbers"> = "off";
+        if (result.numbers) {
+          numfilter = "on";
+        }
+        if (!ResultFilters.getFilter("numbers", numfilter)) {
+          if (filterDebug) {
+            console.log(`skipping result due to numbers filter`, result);
+          }
+          return;
+        }
+
+        if (result.funbox === "none" || result.funbox === undefined) {
+          if (!ResultFilters.getFilter("funbox", "none")) {
+            if (filterDebug) {
+              console.log(`skipping result due to funbox filter`, result);
+            }
+            return;
+          }
+        } else {
+          let counter = 0;
+          for (const f of result.funbox.split("#")) {
+            if (ResultFilters.getFilter("funbox", f)) {
+              counter++;
+              break;
+            }
+          }
+          if (counter == 0) {
+            if (filterDebug) {
+              console.log(`skipping result due to funbox filter`, result);
+            }
+            return;
+          }
+        }
+
+        let tagHide = true;
+        if (result.tags === undefined || result.tags.length === 0) {
+          //no tags, show when no tag is enabled
+          if ((DB.getSnapshot()?.tags?.length ?? 0) > 0) {
+            if (ResultFilters.getFilter("tags", "none")) tagHide = false;
+          } else {
+            tagHide = false;
+          }
+        } else {
+          //tags exist
+          const validTags = DB.getSnapshot()?.tags?.map((t) => t._id);
+
+          if (validTags === undefined) return;
+
+          result.tags.forEach((tag) => {
+            //check if i even need to check tags anymore
+            if (!tagHide) return;
+            //check if tag is valid
+            if (validTags?.includes(tag)) {
+              //tag valid, check if filter is on
+              if (ResultFilters.getFilter("tags", tag)) tagHide = false;
+            } else {
+              //tag not found in valid tags, meaning probably deleted
+              if (ResultFilters.getFilter("tags", "none")) tagHide = false;
+            }
+          });
+        }
+
+        if (tagHide) {
+          if (filterDebug) {
+            console.log(`skipping result due to tag filter`, result);
+          }
+          return;
+        }
+
+        const timeSinceTest = Math.abs(result.timestamp - Date.now()) / 1000;
+
+        let datehide = true;
+
+        if (
+          ResultFilters.getFilter("date", "all") ||
+          (ResultFilters.getFilter("date", "last_day") &&
+            timeSinceTest <= 86400) ||
+          (ResultFilters.getFilter("date", "last_week") &&
+            timeSinceTest <= 604800) ||
+          (ResultFilters.getFilter("date", "last_month") &&
+            timeSinceTest <= 2592000) ||
+          (ResultFilters.getFilter("date", "last_3months") &&
+            timeSinceTest <= 7776000)
+        ) {
+          datehide = false;
+        }
+
+        if (datehide) {
+          if (filterDebug) {
+            console.log(`skipping result due to date filter`, result);
+          }
+          return;
+        }
+
+        filteredResults.push(result);
+      } catch (e) {
+        Notifications.add(
+          "Something went wrong when filtering. Resetting filters.",
+          0
+        );
+        console.log(result);
+        console.error(e);
+        ResultFilters.reset();
         ResultFilters.updateActive();
         update();
       }
-    });
+      //filters done
+      //=======================================
+
+      totalEstimatedWords += Math.round(
+        (result.wpm / 60) * result.testDuration
+      );
+
+      const resultDate = new Date(result.timestamp);
+      resultDate.setSeconds(0);
+      resultDate.setMinutes(0);
+      resultDate.setHours(0);
+      resultDate.setMilliseconds(0);
+      const resultTimestamp = resultDate.getTime();
+
+      if (Object.keys(activityChartData).includes(String(resultTimestamp))) {
+        activityChartData[resultTimestamp].amount++;
+        activityChartData[resultTimestamp].time +=
+          result.testDuration +
+          result.incompleteTestSeconds -
+          (result.afkDuration ?? 0);
+        activityChartData[resultTimestamp].totalWpm += result.wpm;
+      } else {
+        activityChartData[resultTimestamp] = {
+          amount: 1,
+          time:
+            result.testDuration +
+            result.incompleteTestSeconds -
+            (result.afkDuration ?? 0),
+          totalWpm: result.wpm,
+        };
+      }
+
+      const bucket = Math.floor(result.wpm / 10) * 10;
+
+      if (Object.keys(histogramChartData).includes(String(bucket))) {
+        histogramChartData[bucket]++;
+      } else {
+        histogramChartData[bucket] = 1;
+      }
+
+      let tt = 0;
+      if (
+        result.testDuration == undefined &&
+        result.mode2 !== "custom" &&
+        result.mode2 !== "zen"
+      ) {
+        //test finished before testDuration field was introduced - estimate
+        if (result.mode == "time") {
+          tt = result.mode2;
+        } else if (result.mode == "words") {
+          tt = (result.mode2 / result.wpm) * 60;
+        }
+      } else {
+        tt = parseFloat(result.testDuration as unknown as string); //legacy results could have a string here
+      }
+      if (result.incompleteTestSeconds != undefined) {
+        tt += result.incompleteTestSeconds;
+      } else if (result.restartCount != undefined && result.restartCount > 0) {
+        tt += (tt / 4) * result.restartCount;
+      }
+
+      // if (result.incompleteTestSeconds != undefined) {
+      //   tt += result.incompleteTestSeconds;
+      // } else if (result.restartCount != undefined && result.restartCount > 0) {
+      //   tt += (tt / 4) * result.restartCount;
+      // }
+      totalSecondsFiltered += tt;
+
+      if (last10 < 10) {
+        last10++;
+        wpmLast10total += result.wpm;
+        totalAcc10 += result.acc;
+        result.consistency !== undefined
+          ? (totalCons10 += result.consistency)
+          : 0;
+      }
+      testCount++;
+
+      if (result.consistency !== undefined) {
+        consCount++;
+        totalCons += result.consistency;
+        if (result.consistency > topCons) {
+          topCons = result.consistency;
+        }
+      }
+
+      if (result.rawWpm != null) {
+        if (rawWpm.last10Count < 10) {
+          rawWpm.last10Count++;
+          rawWpm.last10Total += result.rawWpm;
+        }
+        rawWpm.total += result.rawWpm;
+        rawWpm.count++;
+        if (result.rawWpm > rawWpm.max) {
+          rawWpm.max = result.rawWpm;
+        }
+      }
+
+      if (result.acc > topAcc) {
+        topAcc = result.acc;
+      }
+
+      totalAcc += result.acc;
+
+      if (result.restartCount != undefined) {
+        testRestarts += result.restartCount;
+      }
+
+      chartData.push({
+        x: result.timestamp,
+        y: Config.alwaysShowCPM ? Misc.roundTo2(result.wpm * 5) : result.wpm,
+        wpm: Config.alwaysShowCPM ? Misc.roundTo2(result.wpm * 5) : result.wpm,
+        acc: result.acc,
+        mode: result.mode,
+        mode2: result.mode2,
+        punctuation: result.punctuation as boolean,
+        language: result.language,
+        timestamp: result.timestamp,
+        difficulty: result.difficulty,
+        raw: Config.alwaysShowCPM
+          ? Misc.roundTo2(result.rawWpm * 5)
+          : result.rawWpm,
+        isPb: result.isPb ?? false,
+      });
+
+      wpmChartData.push(result.wpm);
+
+      accChartData.push({
+        x: result.timestamp,
+        y: 100 - result.acc,
+        errorRate: 100 - result.acc,
+      });
+
+      if (result.wpm > topWpm) {
+        const puncsctring = result.punctuation ? ",<br>with punctuation" : "";
+        const numbsctring = result.numbers
+          ? ",<br> " + (result.punctuation ? "&" : "") + "with numbers"
+          : "";
+        topWpm = result.wpm;
+        if (result.mode == "custom") topMode = result.mode;
+        else {
+          topMode =
+            result.mode + " " + result.mode2 + puncsctring + numbsctring;
+        }
+      }
+
+      totalWpm += result.wpm;
+    }
+  );
+
+  if (Config.alwaysShowCPM) {
+    $(".pageAccount .group.history table thead tr td:nth-child(2)").text("cpm");
   } else {
-    console.log("using db snap");
+    $(".pageAccount .group.history table thead tr td:nth-child(2)").text("wpm");
+  }
+
+  loadMoreLines();
+  ////////
+
+  const activityChartData_amount: MonkeyTypes.ActivityChartDataPoint[] = [];
+  const activityChartData_time: MonkeyTypes.ActivityChartDataPoint[] = [];
+  const activityChartData_avgWpm: MonkeyTypes.ActivityChartDataPoint[] = [];
+  // let lastTimestamp = 0;
+  Object.keys(activityChartData).forEach((date) => {
+    const dateInt = parseInt(date);
+    activityChartData_amount.push({
+      x: dateInt,
+      y: activityChartData[dateInt].amount,
+    });
+    activityChartData_time.push({
+      x: dateInt,
+      y: Misc.roundTo2(activityChartData[dateInt].time),
+      amount: activityChartData[dateInt].amount,
+    });
+    activityChartData_avgWpm.push({
+      x: dateInt,
+      y: Misc.roundTo2(
+        (Config.alwaysShowCPM
+          ? activityChartData[dateInt].totalWpm * 5
+          : activityChartData[dateInt].totalWpm) /
+          activityChartData[dateInt].amount
+      ),
+    });
+    // lastTimestamp = date;
+  });
+
+  const accountActivityScaleOptions = (
+    ChartController.accountActivity.options as ScaleChartOptions<"bar" | "line">
+  ).scales;
+
+  if (Config.alwaysShowCPM) {
+    accountActivityScaleOptions["avgWpm"].title.text = "Average Cpm";
+  } else {
+    accountActivityScaleOptions["avgWpm"].title.text = "Average Wpm";
+  }
+
+  ChartController.accountActivity.data.datasets[0].data =
+    activityChartData_time;
+  ChartController.accountActivity.data.datasets[1].data =
+    activityChartData_avgWpm;
+
+  const histogramChartDataBucketed: { x: number; y: number }[] = [];
+  const labels: string[] = [];
+
+  const keys = Object.keys(histogramChartData);
+  for (let i = 0; i < keys.length; i++) {
+    const bucket = parseInt(keys[i]);
+    labels.push(`${bucket} - ${bucket + 9}`);
+    histogramChartDataBucketed.push({
+      x: bucket,
+      y: histogramChartData[bucket],
+    });
+    if (bucket + 10 != parseInt(keys[i + 1])) {
+      for (let j = bucket + 10; j < parseInt(keys[i + 1]); j += 10) {
+        histogramChartDataBucketed.push({ x: j, y: 0 });
+        labels.push(`${j} - ${j + 9}`);
+      }
+    }
+  }
+
+  ChartController.accountHistogram.data.labels = labels;
+  ChartController.accountHistogram.data.datasets[0].data =
+    histogramChartDataBucketed;
+
+  const accountHistoryScaleOptions = (
+    ChartController.accountHistory.options as ScaleChartOptions<"line">
+  ).scales;
+
+  if (Config.alwaysShowCPM) {
+    accountHistoryScaleOptions["wpm"].title.text = "Characters per Minute";
+  } else {
+    accountHistoryScaleOptions["wpm"].title.text = "Words per Minute";
+  }
+
+  ChartController.accountHistory.data.datasets[0].data = chartData;
+  ChartController.accountHistory.data.datasets[1].data = accChartData;
+
+  const wpms = chartData.map((r) => r.y);
+  const minWpmChartVal = Math.min(...wpms);
+  const maxWpmChartVal = Math.max(...wpms);
+
+  // let accuracies = accChartData.map((r) => r.y);
+  accountHistoryScaleOptions["wpm"].max =
+    Math.floor(maxWpmChartVal) + (10 - (Math.floor(maxWpmChartVal) % 10));
+
+  if (!Config.startGraphsAtZero) {
+    accountHistoryScaleOptions["wpm"].min = Math.floor(minWpmChartVal);
+  } else {
+    accountHistoryScaleOptions["wpm"].min = 0;
+  }
+
+  if (!chartData || chartData.length == 0) {
+    $(".pageAccount .group.noDataError").removeClass("hidden");
+    $(".pageAccount .group.chart").addClass("hidden");
+    $(".pageAccount .group.dailyActivityChart").addClass("hidden");
+    $(".pageAccount .group.histogramChart").addClass("hidden");
+    $(".pageAccount .group.aboveHistory").addClass("hidden");
+    $(".pageAccount .group.history").addClass("hidden");
+    $(".pageAccount .triplegroup.stats").addClass("hidden");
+  } else {
+    $(".pageAccount .group.noDataError").addClass("hidden");
+    $(".pageAccount .group.chart").removeClass("hidden");
+    $(".pageAccount .group.dailyActivityChart").removeClass("hidden");
+    $(".pageAccount .group.histogramChart").removeClass("hidden");
+    $(".pageAccount .group.aboveHistory").removeClass("hidden");
+    $(".pageAccount .group.history").removeClass("hidden");
+    $(".pageAccount .triplegroup.stats").removeClass("hidden");
+  }
+
+  $(".pageAccount .timeTotalFiltered .val").text(
+    Misc.secondsToString(Math.round(totalSecondsFiltered), true, true)
+  );
+
+  const wpmCpm = Config.alwaysShowCPM ? "cpm" : "wpm";
+
+  let highestSpeed: number | string = topWpm;
+  if (Config.alwaysShowCPM) {
+    highestSpeed = topWpm * 5;
+  }
+  if (Config.alwaysShowDecimalPlaces) {
+    highestSpeed = Misc.roundTo2(highestSpeed).toFixed(2);
+  } else {
+    highestSpeed = Math.round(highestSpeed);
+  }
+
+  $(".pageAccount .highestWpm .title").text(`highest ${wpmCpm}`);
+  $(".pageAccount .highestWpm .val").text(highestSpeed);
+
+  let averageSpeed: number | string = totalWpm;
+  if (Config.alwaysShowCPM) {
+    averageSpeed = totalWpm * 5;
+  }
+  if (Config.alwaysShowDecimalPlaces) {
+    averageSpeed = Misc.roundTo2(averageSpeed / testCount).toFixed(2);
+  } else {
+    averageSpeed = Math.round(averageSpeed / testCount);
+  }
+
+  $(".pageAccount .averageWpm .title").text(`average ${wpmCpm}`);
+  $(".pageAccount .averageWpm .val").text(averageSpeed);
+
+  let averageSpeedLast10: number | string = wpmLast10total;
+  if (Config.alwaysShowCPM) {
+    averageSpeedLast10 = wpmLast10total * 5;
+  }
+  if (Config.alwaysShowDecimalPlaces) {
+    averageSpeedLast10 = Misc.roundTo2(averageSpeedLast10 / last10).toFixed(2);
+  } else {
+    averageSpeedLast10 = Math.round(averageSpeedLast10 / last10);
+  }
+
+  $(".pageAccount .averageWpm10 .title").text(
+    `average ${wpmCpm} (last 10 tests)`
+  );
+  $(".pageAccount .averageWpm10 .val").text(averageSpeedLast10);
+
+  let highestRawSpeed: number | string = rawWpm.max;
+  if (Config.alwaysShowCPM) {
+    highestRawSpeed = rawWpm.max * 5;
+  }
+  if (Config.alwaysShowDecimalPlaces) {
+    highestRawSpeed = Misc.roundTo2(highestRawSpeed).toFixed(2);
+  } else {
+    highestRawSpeed = Math.round(highestRawSpeed);
+  }
+
+  $(".pageAccount .highestRaw .title").text(`highest raw ${wpmCpm}`);
+  $(".pageAccount .highestRaw .val").text(highestRawSpeed);
+
+  let averageRawSpeed: number | string = rawWpm.total;
+  if (Config.alwaysShowCPM) {
+    averageRawSpeed = rawWpm.total * 5;
+  }
+  if (Config.alwaysShowDecimalPlaces) {
+    averageRawSpeed = Misc.roundTo2(averageRawSpeed / rawWpm.count).toFixed(2);
+  } else {
+    averageRawSpeed = Math.round(averageRawSpeed / rawWpm.count);
+  }
+
+  $(".pageAccount .averageRaw .title").text(`average raw ${wpmCpm}`);
+  $(".pageAccount .averageRaw .val").text(averageRawSpeed);
+
+  let averageRawSpeedLast10: number | string = rawWpm.last10Total;
+  if (Config.alwaysShowCPM) {
+    averageRawSpeedLast10 = rawWpm.last10Total * 5;
+  }
+  if (Config.alwaysShowDecimalPlaces) {
+    averageRawSpeedLast10 = Misc.roundTo2(
+      averageRawSpeedLast10 / rawWpm.last10Count
+    ).toFixed(2);
+  } else {
+    averageRawSpeedLast10 = Math.round(
+      averageRawSpeedLast10 / rawWpm.last10Count
+    );
+  }
+
+  $(".pageAccount .averageRaw10 .title").text(
+    `average raw ${wpmCpm} (last 10 tests)`
+  );
+  $(".pageAccount .averageRaw10 .val").text(averageRawSpeedLast10);
+
+  $(".pageAccount .highestWpm .mode").html(topMode);
+  $(".pageAccount .testsTaken .val").text(testCount);
+
+  let highestAcc: string | number = topAcc;
+  if (Config.alwaysShowDecimalPlaces) {
+    highestAcc = Misc.roundTo2(highestAcc).toFixed(2);
+  } else {
+    highestAcc = Math.round(highestAcc);
+  }
+
+  $(".pageAccount .highestAcc .val").text(highestAcc + "%");
+
+  let averageAcc: number | string = totalAcc;
+  if (Config.alwaysShowDecimalPlaces) {
+    averageAcc = Math.floor(averageAcc / testCount).toFixed(2);
+  } else {
+    averageAcc = Math.round(averageAcc / testCount);
+  }
+
+  $(".pageAccount .avgAcc .val").text(averageAcc + "%");
+
+  let averageAccLast10: number | string = totalAcc10;
+  if (Config.alwaysShowDecimalPlaces) {
+    averageAccLast10 = Math.floor(averageAccLast10 / last10).toFixed(2);
+  } else {
+    averageAccLast10 = Math.round(averageAccLast10 / last10);
+  }
+
+  $(".pageAccount .avgAcc10 .val").text(averageAccLast10 + "%");
+
+  if (totalCons == 0 || totalCons == undefined) {
+    $(".pageAccount .avgCons .val").text("-");
+    $(".pageAccount .avgCons10 .val").text("-");
+  } else {
+    let highestCons: number | string = topCons;
+    if (Config.alwaysShowDecimalPlaces) {
+      highestCons = Misc.roundTo2(highestCons).toFixed(2);
+    } else {
+      highestCons = Math.round(highestCons);
+    }
+
+    $(".pageAccount .highestCons .val").text(highestCons + "%");
+
+    let averageCons: number | string = totalCons;
+    if (Config.alwaysShowDecimalPlaces) {
+      averageCons = Misc.roundTo2(averageCons / consCount).toFixed(2);
+    } else {
+      averageCons = Math.round(averageCons / consCount);
+    }
+
+    $(".pageAccount .avgCons .val").text(averageCons + "%");
+
+    let averageConsLast10: number | string = totalCons10;
+    if (Config.alwaysShowDecimalPlaces) {
+      averageConsLast10 = Misc.roundTo2(
+        averageConsLast10 / Math.min(last10, consCount)
+      ).toFixed(2);
+    } else {
+      averageConsLast10 = Math.round(
+        averageConsLast10 / Math.min(last10, consCount)
+      );
+    }
+
+    $(".pageAccount .avgCons10 .val").text(averageConsLast10 + "%");
+  }
+
+  $(".pageAccount .testsStarted .val").text(`${testCount + testRestarts}`);
+  $(".pageAccount .testsCompleted .val").text(
+    `${testCount}(${Math.floor(
+      (testCount / (testCount + testRestarts)) * 100
+    )}%)`
+  );
+
+  $(".pageAccount .testsCompleted .avgres").text(`
+    ${(testRestarts / testCount).toFixed(1)} restarts per completed test
+  `);
+
+  const wpmPoints = filteredResults.map((r) => r.wpm).reverse();
+
+  const trend = Misc.findLineByLeastSquares(wpmPoints);
+
+  const wpmChange = trend[1][1] - trend[0][1];
+
+  const wpmChangePerHour = wpmChange * (3600 / totalSecondsFiltered);
+
+  const plus = wpmChangePerHour > 0 ? "+" : "";
+
+  $(".pageAccount .group.chart .below .text").text(
+    `Speed change per hour spent typing: ${
+      plus +
+      Misc.roundTo2(
+        Config.alwaysShowCPM ? wpmChangePerHour * 5 : wpmChangePerHour
+      )
+    } ${Config.alwaysShowCPM ? "cpm" : "wpm"}.`
+  );
+
+  $(".pageAccount .estimatedWordsTyped .val").text(totalEstimatedWords);
+
+  applyHistorySmoothing();
+  ChartController.accountActivity.updateColors();
+  LoadingPage.updateBar(100, true);
+  Focus.set(false);
+  Misc.swapElements(
+    $(".pageAccount .preloader"),
+    $(".pageAccount .content"),
+    250,
+    async () => {
+      // Profile.updateNameFontSize("account");
+      $(".page.pageAccount").css("height", "unset"); //weird safari fix
+    },
+    async () => {
+      setTimeout(() => {
+        Profile.updateNameFontSize("account");
+      }, 1);
+    }
+  );
+}
+
+export async function downloadResults(): Promise<void> {
+  if (DB.getSnapshot()?.results !== undefined) return;
+  const results = await DB.getUserResults();
+  if (results === false && !ConnectionState.get()) {
+    Notifications.add("Could not get results - you are offline", -1, 5);
+    return;
+  }
+  TodayTracker.addAllFromToday();
+  if (results) {
+    ResultFilters.updateActive();
+  }
+}
+
+export async function update(): Promise<void> {
+  LoadingPage.updateBar(0, true);
+  if (DB.getSnapshot() === null) {
+    Notifications.add(`Missing account data. Please refresh.`, -1);
+    $(".pageAccount .preloader").html("Missing account data. Please refresh.");
+  } else {
+    LoadingPage.updateBar(90);
+    await downloadResults();
     try {
-      cont();
+      fillContent();
     } catch (e) {
       console.error(e);
       Notifications.add(`Something went wrong: ${e}`, -1);
@@ -896,9 +1033,9 @@ function sortAndRefreshHistory(
   forceDescending: null | boolean = null
 ): void {
   // Removes styling from previous sorting requests:
-  $("td").removeClass("header-sorted");
+  $("td").removeClass("headerSorted");
   $("td").children("i").remove();
-  $(headerClass).addClass("header-sorted");
+  $(headerClass).addClass("headerSorted");
 
   if (filteredResults.length < 2) return;
 
@@ -1002,7 +1139,7 @@ $(".pageAccount #accountHistoryChart").on("click", () => {
   $(`#result-${index}`).addClass("active");
 });
 
-$(document).on("click", ".pageAccount .miniResultChartButton", (event) => {
+$(".pageAccount").on("click", ".miniResultChartButton", (event) => {
   console.log("updating");
   const filteredId = $(event.currentTarget).attr("filteredResultsId");
   if (filteredId === undefined) return;
@@ -1016,47 +1153,72 @@ $(document).on("click", ".pageAccount .miniResultChartButton", (event) => {
   );
 });
 
-$(document).on("click", ".history-wpm-header", () => {
+$(".pageAccount .group.history").on("click", ".history-wpm-header", () => {
   sortAndRefreshHistory("wpm", ".history-wpm-header");
 });
 
-$(document).on("click", ".history-raw-header", () => {
+$(".pageAccount .group.history").on("click", ".history-raw-header", () => {
   sortAndRefreshHistory("rawWpm", ".history-raw-header");
 });
 
-$(document).on("click", ".history-acc-header", () => {
+$(".pageAccount .group.history").on("click", ".history-acc-header", () => {
   sortAndRefreshHistory("acc", ".history-acc-header");
 });
 
-$(document).on("click", ".history-correct-chars-header", () => {
-  sortAndRefreshHistory("correctChars", ".history-correct-chars-header");
-});
+$(".pageAccount .group.history").on(
+  "click",
+  ".history-correct-chars-header",
+  () => {
+    sortAndRefreshHistory("correctChars", ".history-correct-chars-header");
+  }
+);
 
-$(document).on("click", ".history-incorrect-chars-header", () => {
-  sortAndRefreshHistory("incorrectChars", ".history-incorrect-chars-header");
-});
+$(".pageAccount .group.history").on(
+  "click",
+  ".history-incorrect-chars-header",
+  () => {
+    sortAndRefreshHistory("incorrectChars", ".history-incorrect-chars-header");
+  }
+);
 
-$(document).on("click", ".history-consistency-header", () => {
-  sortAndRefreshHistory("consistency", ".history-consistency-header");
-});
+$(".pageAccount .group.history").on(
+  "click",
+  ".history-consistency-header",
+  () => {
+    sortAndRefreshHistory("consistency", ".history-consistency-header");
+  }
+);
 
-$(document).on("click", ".history-date-header", () => {
+$(".pageAccount .group.history").on("click", ".history-date-header", () => {
   sortAndRefreshHistory("timestamp", ".history-date-header");
 });
 
 // Resets sorting to by date' when applying filers (normal or advanced)
-$(document).on("click", ".buttonsAndTitle .buttons .button", () => {
-  // We want to 'force' descending sort:
-  sortAndRefreshHistory("timestamp", ".history-date-header", true);
-});
-
-$(document).on(
+$(".pageAccount .group.history").on(
   "click",
-  ".pageAccount .topFilters .button, .pageAccount .filterButtons .button",
+  ".buttonsAndTitle .buttons .button",
+  () => {
+    // We want to 'force' descending sort:
+    sortAndRefreshHistory("timestamp", ".history-date-header", true);
+  }
+);
+
+$(".pageAccount .group.topFilters, .pageAccount .filterButtons").on(
+  "click",
+  ".button",
   () => {
     setTimeout(() => {
       update();
     }, 0);
+  }
+);
+
+$(".pageAccount .group.presetFilterButtons").on(
+  "click",
+  ".filterBtns .filterPresets .select-filter-preset",
+  (e) => {
+    ResultFilters.setFilterPreset($(e.target).data("id"));
+    update();
   }
 );
 
@@ -1068,21 +1230,44 @@ $(".pageAccount .content .group.aboveHistory .exportCSV").on("click", () => {
   Misc.downloadResultsCSV(filteredResults);
 });
 
+$(".pageAccount .profile").on("click", ".details .copyLink", () => {
+  const snapshot = DB.getSnapshot();
+  if (!snapshot) return;
+  const { name } = snapshot;
+  const url = `${location.origin}/profile/${name}`;
+
+  navigator.clipboard.writeText(url).then(
+    function () {
+      Notifications.add("URL Copied to clipboard", 0);
+    },
+    function () {
+      alert("Failed to copy using the Clipboard API. Here's the link: " + url);
+    }
+  );
+});
+
 export const page = new Page(
   "account",
   $(".page.pageAccount"),
   "/account",
-  () => {
-    SignOutButton.hide();
+  async () => {
+    //
   },
   async () => {
     reset();
+    ResultFilters.removeButtons();
   },
-  () => {
+  async () => {
+    await ResultFilters.appendButtons();
+    ResultFilters.updateActive();
+    if (DB.getSnapshot()?.results == undefined) {
+      $(".pageLoading .fill, .pageAccount .fill").css("width", "0%");
+      $(".pageAccount .content").addClass("hidden");
+      $(".pageAccount .preloader").removeClass("hidden");
+    }
     update();
-    // SignOutButton.show();
   },
-  () => {
+  async () => {
     //
   }
 );

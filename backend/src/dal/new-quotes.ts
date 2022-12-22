@@ -15,11 +15,11 @@ try {
   git = undefined;
 }
 
-type AddQuoteReturn = {
+interface AddQuoteReturn {
   languageError?: number;
   duplicateId?: number;
   similarityScore?: number;
-};
+}
 
 export async function add(
   text: string,
@@ -37,6 +37,11 @@ export async function add(
     timestamp: Date.now(),
     approved: false,
   };
+
+  if (!/^\w+$/.test(language)) {
+    throw new MonkeyError(500, `Invalid language name`, language);
+  }
+
   //check for duplicate first
   const fileDir = path.join(
     __dirname,
@@ -75,6 +80,11 @@ export async function get(language: string): Promise<MonkeyTypes.NewQuote[]> {
   } = {
     approved: false,
   };
+
+  if (!/^\w+$/.test(language)) {
+    throw new MonkeyError(500, `Invalid language name`, language);
+  }
+
   if (language !== "all") {
     where.language = language;
   }
@@ -86,18 +96,18 @@ export async function get(language: string): Promise<MonkeyTypes.NewQuote[]> {
     .toArray();
 }
 
-type Quote = {
+interface Quote {
   id?: number;
   text: string;
   source: string;
   length: number;
   approvedBy: string;
-};
+}
 
-type ApproveReturn = {
+interface ApproveReturn {
   quote: Quote;
   message: string;
-};
+}
 
 export async function approve(
   quoteId: string,
@@ -111,7 +121,10 @@ export async function approve(
     .collection<MonkeyTypes.NewQuote>("new-quotes")
     .findOne({ _id: new ObjectId(quoteId) });
   if (!targetQuote) {
-    throw new MonkeyError(404, "Quote not found");
+    throw new MonkeyError(
+      404,
+      "Quote not found. It might have already been reviewed. Please refresh the list."
+    );
   }
   const language = targetQuote.language;
   const quote: Quote = {
@@ -121,6 +134,11 @@ export async function approve(
     approvedBy: name,
   };
   let message = "";
+
+  if (!/^\w+$/.test(language)) {
+    throw new MonkeyError(500, `Invalid language name`, language);
+  }
+
   const fileDir = path.join(
     __dirname,
     `${PATH_TO_REPO}/frontend/static/quotes/${language}.json`

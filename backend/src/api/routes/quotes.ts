@@ -20,8 +20,8 @@ const checkIfUserIsQuoteMod = checkUserPermissions({
 
 router.get(
   "/",
-  RateLimit.newQuotesGet,
   authenticateRequest(),
+  RateLimit.newQuotesGet,
   checkIfUserIsQuoteMod,
   asyncHandler(QuoteController.getQuotes)
 );
@@ -30,18 +30,18 @@ router.post(
   "/",
   validateConfiguration({
     criteria: (configuration) => {
-      return configuration.quoteSubmit.enabled;
+      return configuration.quotes.submissionsEnabled;
     },
     invalidMessage:
       "Quote submission is disabled temporarily. The queue is quite long and we need some time to catch up.",
   }),
-  RateLimit.newQuotesAdd,
   authenticateRequest(),
+  RateLimit.newQuotesAdd,
   validateRequest({
     body: {
       text: joi.string().min(60).required(),
       source: joi.string().required(),
-      language: joi.string().required(),
+      language: joi.string().regex(/^\w+$/).required(),
       captcha: joi.string().required(),
     },
     validationErrorMessage: "Please fill all the fields",
@@ -51,8 +51,8 @@ router.post(
 
 router.post(
   "/approve",
-  RateLimit.newQuotesAction,
   authenticateRequest(),
+  RateLimit.newQuotesAction,
   validateRequest({
     body: {
       quoteId: joi.string().required(),
@@ -67,8 +67,8 @@ router.post(
 
 router.post(
   "/reject",
-  RateLimit.newQuotesAction,
   authenticateRequest(),
+  RateLimit.newQuotesAction,
   validateRequest({
     body: {
       quoteId: joi.string().required(),
@@ -80,12 +80,12 @@ router.post(
 
 router.get(
   "/rating",
-  RateLimit.quoteRatingsGet,
   authenticateRequest(),
+  RateLimit.quoteRatingsGet,
   validateRequest({
     query: {
       quoteId: joi.string().regex(/^\d+$/).required(),
-      language: joi.string().required(),
+      language: joi.string().regex(/^\w+$/).required(),
     },
   }),
   asyncHandler(QuoteController.getRating)
@@ -93,13 +93,13 @@ router.get(
 
 router.post(
   "/rating",
-  RateLimit.quoteRatingsSubmit,
   authenticateRequest(),
+  RateLimit.quoteRatingsSubmit,
   validateRequest({
     body: {
       quoteId: joi.number().required(),
       rating: joi.number().min(1).max(5).required(),
-      language: joi.string().required(),
+      language: joi.string().regex(/^\w+$/).required(),
     },
   }),
   asyncHandler(QuoteController.submitRating)
@@ -109,16 +109,16 @@ router.post(
   "/report",
   validateConfiguration({
     criteria: (configuration) => {
-      return configuration.quoteReport.enabled;
+      return configuration.quotes.reporting.enabled;
     },
     invalidMessage: "Quote reporting is unavailable.",
   }),
-  RateLimit.quoteReportSubmit,
   authenticateRequest(),
+  RateLimit.quoteReportSubmit,
   validateRequest({
     body: {
       quoteId: joi.string().required(),
-      quoteLanguage: joi.string().required(),
+      quoteLanguage: joi.string().regex(/^\w+$/).required(),
       reason: joi
         .string()
         .valid(
@@ -128,7 +128,12 @@ router.post(
           "Incorrect source"
         )
         .required(),
-      comment: joi.string().allow("").max(250).required(),
+      comment: joi
+        .string()
+        .allow("")
+        .regex(/^([.]|[^/<>])+$/)
+        .max(250)
+        .required(),
       captcha: joi.string().required(),
     },
   }),

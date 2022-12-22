@@ -1,6 +1,5 @@
 import * as TestLogic from "../test/test-logic";
-import Config from "../config";
-import * as UpdateConfig from "../config";
+import Config, * as UpdateConfig from "../config";
 import * as ManualRestart from "../test/manual-restart-tracker";
 import * as CustomWordAmountPopup from "./custom-word-amount-popup";
 import * as CustomTestDurationPopup from "./custom-test-duration-popup";
@@ -89,7 +88,7 @@ $("#mobileTestConfigPopupWrapper").on("click", (e) => {
   }
 });
 
-$("#top .mobileConfig").on("click", () => {
+$("#mobileTestConfig").on("click", () => {
   showPopup();
 });
 
@@ -122,8 +121,8 @@ el.find(".timeGroup .button").on("click", (e) => {
 });
 
 el.find(".quoteGroup .button").on("click", (e) => {
-  let len: number | number[] = ($(e.currentTarget).attr("quote") ??
-    0) as number;
+  let len: number | number[] =
+    parseInt($(e.currentTarget).attr("quote") as string, 10) ?? 0;
   if (len == -2) {
     // UpdateConfig.setQuoteLength(-2, false, e.shiftKey);
     hidePopup();

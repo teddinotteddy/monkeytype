@@ -2,15 +2,11 @@ import Ape from "../ape";
 import * as Notifications from "../elements/notifications";
 import Config, * as UpdateConfig from "../config";
 import * as AccountButton from "../elements/account-button";
-import * as VerificationController from "./verification-controller";
 import * as Misc from "../utils/misc";
 import * as Settings from "../pages/settings";
 import * as AllTimeStats from "../account/all-time-stats";
 import * as DB from "../db";
 import * as TestLogic from "../test/test-logic";
-import * as PageController from "./page-controller";
-import * as PSA from "../elements/psa";
-import * as Focus from "../test/focus";
 import * as Loader from "../elements/loader";
 import * as PageTransition from "../states/page-transition";
 import * as ActivePage from "../states/active-page";
@@ -19,11 +15,12 @@ import * as LoadingPage from "../pages/loading";
 import * as LoginPage from "../pages/login";
 import * as ResultFilters from "../account/result-filters";
 import * as PaceCaret from "../test/pace-caret";
-import * as CommandlineLists from "../elements/commandline-lists";
 import * as TagController from "./tag-controller";
 import * as ResultTagsPopup from "../popups/result-tags-popup";
+import * as RegisterCaptchaPopup from "../popups/register-captcha-popup";
 import * as URLHandler from "../utils/url-handler";
 import * as Account from "../pages/account";
+import * as Alerts from "../elements/alerts";
 import {
   EmailAuthProvider,
   GoogleAuthProvider,
@@ -38,23 +35,29 @@ import {
   linkWithPopup,
   linkWithCredential,
   reauthenticateWithPopup,
-  unlink as unlinkAuth,
   getAdditionalUserInfo,
   sendPasswordResetEmail,
   User as UserType,
+  Unsubscribe,
 } from "firebase/auth";
 import { Auth } from "../firebase";
-import differenceInDays from "date-fns/differenceInDays";
-import { defaultSnap } from "../constants/default-snapshot";
 import { dispatch as dispatchSignUpEvent } from "../observables/google-sign-up-event";
 import {
   hideFavoriteQuoteLength,
   showFavoriteQuoteLength,
 } from "../test/test-config";
+import { navigate } from "../observables/navigate-event";
+import { update as updateTagsCommands } from "../commandline/lists/tags";
+import * as ConnectionState from "../states/connection";
 
 export const gmailProvider = new GoogleAuthProvider();
+let canCall = true;
 
 export function sendVerificationEmail(): void {
+  if (Auth === undefined) {
+    Notifications.add("Authentication uninitialized", -1, 3);
+    return;
+  }
   Loader.show();
   const user = Auth.currentUser;
   if (user === null) return;
@@ -73,7 +76,7 @@ export function sendVerificationEmail(): void {
 export async function getDataAndInit(): Promise<boolean> {
   try {
     console.log("getting account data");
-    if (ActivePage.get() === "loading") {
+    if (window.location.pathname !== "/account") {
       LoadingPage.updateBar(90);
     } else {
       LoadingPage.updateBar(45);
@@ -108,28 +111,39 @@ export async function getDataAndInit(): Promise<boolean> {
     LoadingPage.updateBar(45);
   }
   LoadingPage.updateText("Applying settings...");
-  const snapshot = DB.getSnapshot();
-  $("#menu .text-button.account .text").text(snapshot.name);
+  const snapshot = DB.getSnapshot() as MonkeyTypes.Snapshot;
+  $("#menu .textButton.account > .text").text(snapshot.name);
   showFavoriteQuoteLength();
 
   ResultFilters.loadTags(snapshot.tags);
 
-  Promise.all([Misc.getLanguageList(), Misc.getFunboxList()]).then((values) => {
-    const [languages, funboxes] = values;
-    languages.forEach((language) => {
-      ResultFilters.defaultResultFilters.language[language] = true;
+  Promise.all([Misc.getLanguageList(), Misc.getFunboxList()])
+    .then((values) => {
+      const [languages, funboxes] = values;
+      languages.forEach((language) => {
+        ResultFilters.defaultResultFilters.language[language] = true;
+      });
+      funboxes.forEach((funbox) => {
+        ResultFilters.defaultResultFilters.funbox[funbox.name] = true;
+      });
+      // filters = defaultResultFilters;
+      ResultFilters.load();
+    })
+    .catch((e) => {
+      console.log(
+        Misc.createErrorMessage(
+          e,
+          "Something went wrong while loading the filters"
+        )
+      );
     });
-    funboxes.forEach((funbox) => {
-      ResultFilters.defaultResultFilters.funbox[funbox.name] = true;
-    });
-    // filters = defaultResultFilters;
-    ResultFilters.load();
-  });
 
   if (snapshot.needsToChangeName) {
     Notifications.addBanner(
       "Your name was reset. <a class='openNameChange'>Click here</a> to change it and learn more about why.",
       -1,
+      undefined,
+      true,
       undefined,
       true
     );
@@ -142,7 +156,9 @@ export async function getDataAndInit(): Promise<boolean> {
       UpdateConfig.apply(snapshot.config);
       Settings.update();
       UpdateConfig.saveFullConfigToLocalStorage(true);
-      TestLogic.restart(false, true);
+      TestLogic.restart({
+        nosave: true,
+      });
     } else if (snapshot.config !== undefined) {
       //loading db config, keep for now
       let configsDifferent = false;
@@ -188,9 +204,14 @@ export async function getDataAndInit(): Promise<boolean> {
         Settings.update();
         UpdateConfig.saveFullConfigToLocalStorage(true);
         if (ActivePage.get() == "test") {
-          TestLogic.restart(false, true);
+          TestLogic.restart({
+            nosave: true,
+          });
         }
-        DB.saveConfig(Config);
+        AccountButton.loading(true);
+        DB.saveConfig(Config).then(() => {
+          AccountButton.loading(false);
+        });
       }
     }
     UpdateConfig.setDbConfigLoaded(true);
@@ -205,18 +226,19 @@ export async function getDataAndInit(): Promise<boolean> {
   }
   AccountButton.loading(false);
   ResultFilters.updateTags();
-  CommandlineLists.updateTagCommands();
+  updateTagsCommands();
   TagController.loadActiveFromLocalStorage();
   ResultTagsPopup.updateButtons();
   Settings.showAccountSection();
-  if (ActivePage.get() === "account") {
-    Account.update();
-  } else {
-    Focus.set(false);
+  if (window.location.pathname === "/account") {
+    LoadingPage.updateBar(90);
+    await Account.downloadResults();
   }
-  await PageController.change(undefined, true);
-  PageTransition.set(false);
-  console.log("account loading finished");
+  if (window.location.pathname === "/login") {
+    navigate("/account");
+  } else {
+    navigate();
+  }
   return true;
 }
 
@@ -229,11 +251,14 @@ export async function loadUser(user: UserType): Promise<void> {
     );
   }
   PageTransition.set(false);
-  AccountButton.update();
   AccountButton.loading(true);
   if ((await getDataAndInit()) === false) {
     signOut();
   }
+  const { discordId, discordAvatar, xp, inboxUnreadSize } =
+    DB.getSnapshot() as MonkeyTypes.Snapshot;
+  AccountButton.update(xp, discordId, discordAvatar);
+  Alerts.setNotificationBubbleVisible(inboxUnreadSize > 0);
   // var displayName = user.displayName;
   // var email = user.email;
   // var emailVerified = user.emailVerified;
@@ -243,64 +268,115 @@ export async function loadUser(user: UserType): Promise<void> {
   // var providerData = user.providerData;
   LoginPage.hidePreloader();
 
+  $("#top .signInOut .icon").html(`<i class="fas fa-fw fa-sign-out-alt"></i>`);
+
   // showFavouriteThemesAtTheTop();
 
-  let text = "Account created on " + user.metadata.creationTime;
+  if (TestLogic.notSignedInLastResult !== null) {
+    TestLogic.setNotSignedInUid(user.uid);
 
-  const creationDate = new Date(user.metadata.creationTime as string);
-  const diffDays = differenceInDays(new Date(), creationDate);
+    const response = await Ape.results.save(TestLogic.notSignedInLastResult);
 
-  text += ` (${diffDays} day${diffDays != 1 ? "s" : ""} ago)`;
+    if (response.status !== 200) {
+      return Notifications.add(
+        "Failed to save last result: " + response.message,
+        -1
+      );
+    }
 
-  $(".pageAccount .group.createdDate").text(text);
-
-  if (VerificationController.data !== null) {
-    VerificationController.verify(user.uid);
+    TestLogic.clearNotSignedInResult();
+    Notifications.add("Last test result saved", 1);
   }
 }
 
-const authListener = Auth.onAuthStateChanged(async function (user) {
-  // await UpdateConfig.loadPromise;
-  const search = window.location.search;
-  console.log(`auth state changed, user ${user ? true : false}`);
-  if (user) {
-    await loadUser(user);
-  } else {
+let authListener: Unsubscribe;
+
+// eslint-disable-next-line no-constant-condition
+if (Auth && ConnectionState.get()) {
+  authListener = Auth?.onAuthStateChanged(async function (user) {
+    // await UpdateConfig.loadPromise;
+    const search = window.location.search;
+    const hash = window.location.hash;
+    console.log(`auth state changed, user ${user ? true : false}`);
+    if (user) {
+      $("#top .signInOut .icon").html(
+        `<i class="fas fa-fw fa-sign-out-alt"></i>`
+      );
+      await loadUser(user);
+    } else {
+      $("#top .signInOut .icon").html(`<i class="far fa-fw fa-user"></i>`);
+      if (window.location.pathname == "/account") {
+        window.history.replaceState("", "", "/login");
+      }
+      PageTransition.set(false);
+    }
+    if (!user) {
+      navigate();
+    }
+
+    URLHandler.loadCustomThemeFromUrl(search);
+    URLHandler.loadTestSettingsFromUrl(search);
+    URLHandler.linkDiscord(hash);
+
+    if (/challenge_.+/g.test(window.location.pathname)) {
+      Notifications.add(
+        "Challenge links temporarily disabled. Please use the command line to load the challenge manually",
+        0,
+        7
+      );
+      return;
+      // Notifications.add("Loading challenge", 0);
+      // let challengeName = window.location.pathname.split("_")[1];
+      // setTimeout(() => {
+      //   ChallengeController.setup(challengeName);
+      // }, 1000);
+    }
+  });
+} else {
+  $("#menu .signInOut").addClass("hidden");
+
+  $("document").ready(async () => {
+    // await UpdateConfig.loadPromise;
+    const search = window.location.search;
+    const hash = window.location.hash;
+    $("#top .signInOut .icon").html(`<i class="far fa-fw fa-user"></i>`);
     if (window.location.pathname == "/account") {
       window.history.replaceState("", "", "/login");
     }
     PageTransition.set(false);
-  }
-  if (!user) {
-    PageController.change();
-    setTimeout(() => {
-      Focus.set(false);
-    }, 125 / 2);
-  }
+    navigate();
 
-  URLHandler.loadCustomThemeFromUrl(search);
-  URLHandler.loadTestSettingsFromUrl(search);
-  if (/challenge_.+/g.test(window.location.pathname)) {
-    Notifications.add(
-      "Challenge links temporarily disabled. Please use the command line to load the challenge manually",
-      0,
-      7
-    );
+    URLHandler.loadCustomThemeFromUrl(search);
+    URLHandler.loadTestSettingsFromUrl(search);
+    URLHandler.linkDiscord(hash);
+
+    if (/challenge_.+/g.test(window.location.pathname)) {
+      Notifications.add(
+        "Challenge links temporarily disabled. Please use the command line to load the challenge manually",
+        0,
+        7
+      );
+      return;
+    }
+  });
+}
+
+export async function signIn(): Promise<void> {
+  if (Auth === undefined) {
+    Notifications.add("Authentication uninitialized", -1, 3);
     return;
-    // Notifications.add("Loading challenge", 0);
-    // let challengeName = window.location.pathname.split("_")[1];
-    // setTimeout(() => {
-    //   ChallengeController.setup(challengeName);
-    // }, 1000);
   }
-  PSA.show();
-});
+  if (!ConnectionState.get()) {
+    Notifications.add("You are offline", 0, 2);
+    return;
+  }
 
-export function signIn(): void {
   UpdateConfig.setChangedBeforeDb(false);
   authListener();
   LoginPage.showPreloader();
   LoginPage.disableInputs();
+  LoginPage.disableSignUpButton();
+  LoginPage.disableSignInButton();
   const email = ($(".pageLogin .login input")[0] as HTMLInputElement).value;
   const password = ($(".pageLogin .login input")[1] as HTMLInputElement).value;
 
@@ -308,49 +384,73 @@ export function signIn(): void {
     ? browserLocalPersistence
     : browserSessionPersistence;
 
-  setPersistence(Auth, persistence).then(function () {
-    return signInWithEmailAndPassword(Auth, email, password)
-      .then(async (e) => {
-        await loadUser(e.user);
-        if (TestLogic.notSignedInLastResult !== null) {
-          TestLogic.setNotSignedInUid(e.user.uid);
+  await setPersistence(Auth, persistence);
+  return signInWithEmailAndPassword(Auth, email, password)
+    .then(async (e) => {
+      await loadUser(e.user);
+    })
+    .catch(function (error) {
+      let message = error.message;
+      if (error.code === "auth/wrong-password") {
+        message = "Incorrect password";
+      } else if (error.code === "auth/user-not-found") {
+        message = "User not found";
+      } else if (error.code === "auth/invalid-email") {
+        message =
+          "Invalid email format (make sure you are using your email to login - not your username)";
+      }
+      Notifications.add(message, -1);
+      LoginPage.hidePreloader();
+      LoginPage.enableInputs();
+      LoginPage.enableSignInButton();
+      LoginPage.updateSignupButton();
+    });
+}
 
-          const response = await Ape.results.save(
-            TestLogic.notSignedInLastResult
-          );
+export async function forgotPassword(email: any): Promise<void> {
+  if (Auth === undefined) {
+    Notifications.add("Authentication uninitialized", -1, 3);
+    return;
+  }
+  if (!canCall) {
+    return Notifications.add(
+      "Please wait before requesting another password reset link",
+      0,
+      5000
+    );
+  }
+  if (!email) return Notifications.add("Please enter an email!", -1);
 
-          if (response.status !== 200) {
-            return Notifications.add(
-              "Failed to save last result: " + response.message,
-              -1
-            );
-          }
-
-          TestLogic.clearNotSignedInResult();
-          Notifications.add("Last test result saved", 1);
-        }
-      })
-      .catch(function (error) {
-        let message = error.message;
-        if (error.code === "auth/wrong-password") {
-          message = "Incorrect password";
-        } else if (error.code === "auth/user-not-found") {
-          message = "User not found";
-        } else if (error.code === "auth/invalid-email") {
-          message =
-            "Invalid email format (make sure you are using your email to login - not your username)";
-        }
-        Notifications.add(message, -1);
-        LoginPage.hidePreloader();
-        LoginPage.enableInputs();
-      });
-  });
+  try {
+    await sendPasswordResetEmail(Auth, email);
+    Notifications.add("Email sent", 1, 2);
+  } catch (error) {
+    Notifications.add(
+      Misc.createErrorMessage(error, "Failed to send email"),
+      -1
+    );
+  }
+  canCall = false;
+  setTimeout(function () {
+    canCall = true;
+  }, 10000);
 }
 
 export async function signInWithGoogle(): Promise<void> {
+  if (Auth === undefined) {
+    Notifications.add("Authentication uninitialized", -1, 3);
+    return;
+  }
+  if (!ConnectionState.get()) {
+    Notifications.add("You are offline", 0, 2);
+    return;
+  }
+
   UpdateConfig.setChangedBeforeDb(false);
   LoginPage.showPreloader();
   LoginPage.disableInputs();
+  LoginPage.disableSignUpButton();
+  LoginPage.disableSignInButton();
   authListener();
   const persistence = $(".pageLogin .login #rememberMe input").prop("checked")
     ? browserLocalPersistence
@@ -380,10 +480,16 @@ export async function signInWithGoogle(): Promise<void> {
       Notifications.add(message, -1);
       LoginPage.hidePreloader();
       LoginPage.enableInputs();
+      LoginPage.enableSignInButton();
+      LoginPage.updateSignupButton();
     });
 }
 
 export async function addGoogleAuth(): Promise<void> {
+  if (Auth === undefined) {
+    Notifications.add("Authentication uninitialized", -1, 3);
+    return;
+  }
   Loader.show();
   if (Auth.currentUser === null) return;
   linkWithPopup(Auth.currentUser, gmailProvider)
@@ -395,68 +501,20 @@ export async function addGoogleAuth(): Promise<void> {
     .catch(function (error) {
       Loader.hide();
       Notifications.add(
-        "Failed to add Google authenication: " + error.message,
+        "Failed to add Google authentication: " + error.message,
         -1
       );
     });
-}
-
-export function noGoogleNoMo(): void {
-  const user = Auth.currentUser;
-  if (user === null) return;
-  if (
-    user.providerData.find((provider) => provider.providerId === "password")
-  ) {
-    unlinkAuth(user, "google.com")
-      .then(() => {
-        console.log("unlinked");
-        Settings.updateAuthSections();
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
-}
-
-export async function removeGoogleAuth(): Promise<void> {
-  const user = Auth.currentUser;
-  if (user === null) return;
-  if (
-    user.providerData.find((provider) => provider.providerId === "password")
-  ) {
-    Loader.show();
-    try {
-      await reauthenticateWithPopup(user, gmailProvider);
-    } catch (e) {
-      Loader.hide();
-      const message = Misc.createErrorMessage(e, "Failed to reauthenticate");
-      return Notifications.add(message, -1);
-    }
-    unlinkAuth(user, "google.com")
-      .then(() => {
-        Notifications.add("Google authentication removed", 1);
-        Loader.hide();
-        Settings.updateAuthSections();
-      })
-      .catch((error) => {
-        Loader.hide();
-        Notifications.add(
-          "Failed to remove Google authentication: " + error.message,
-          -1
-        );
-      });
-  } else {
-    Notifications.add(
-      "Password authentication needs to be enabled to remove Google authentication",
-      -1
-    );
-  }
 }
 
 export async function addPasswordAuth(
   email: string,
   password: string
 ): Promise<void> {
+  if (Auth === undefined) {
+    Notifications.add("Authentication uninitialized", -1, 3);
+    return;
+  }
   Loader.show();
   const user = Auth.currentUser;
   if (user === null) return;
@@ -476,19 +534,23 @@ export async function addPasswordAuth(
   linkWithCredential(user, credential)
     .then(function () {
       Loader.hide();
-      Notifications.add("Password authenication added", 1);
+      Notifications.add("Password authentication added", 1);
       Settings.updateAuthSections();
     })
     .catch(function (error) {
       Loader.hide();
       Notifications.add(
-        "Failed to add password authenication: " + error.message,
+        "Failed to add password authentication: " + error.message,
         -1
       );
     });
 }
 
 export function signOut(): void {
+  if (Auth === undefined) {
+    Notifications.add("Authentication uninitialized", -1, 3);
+    return;
+  }
   if (!Auth.currentUser) return;
   Auth.signOut()
     .then(function () {
@@ -496,11 +558,14 @@ export function signOut(): void {
       AllTimeStats.clear();
       Settings.hideAccountSection();
       AccountButton.update();
-      PageController.change("login");
-      DB.setSnapshot(defaultSnap);
+      navigate("/login");
+      DB.setSnapshot(undefined);
       $(".pageLogin .button").removeClass("disabled");
       $(".pageLogin input").prop("disabled", false);
-      hideFavoriteQuoteLength();
+      $("#top .signInOut .icon").html(`<i class="far fa-fw fa-user"></i>`);
+      setTimeout(() => {
+        hideFavoriteQuoteLength();
+      }, 125);
     })
     .catch(function (error) {
       Notifications.add(error.message, -1);
@@ -508,7 +573,22 @@ export function signOut(): void {
 }
 
 async function signUp(): Promise<void> {
+  if (Auth === undefined) {
+    Notifications.add("Authentication uninitialized", -1, 3);
+    return;
+  }
+  if (!ConnectionState.get()) {
+    Notifications.add("You are offline", 0, 2);
+    return;
+  }
+  RegisterCaptchaPopup.show();
+  const captcha = await RegisterCaptchaPopup.promise;
+  if (!captcha) {
+    Notifications.add("Please complete the captcha", -1);
+    return;
+  }
   LoginPage.disableInputs();
+  LoginPage.disableSignUpButton();
   LoginPage.showPreloader();
   const nname = ($(".pageLogin .register input")[0] as HTMLInputElement).value;
   const email = ($(".pageLogin .register input")[1] as HTMLInputElement).value;
@@ -523,23 +603,60 @@ async function signUp(): Promise<void> {
   if (nname === "" || email === "" || emailVerify === "" || password === "") {
     LoginPage.hidePreloader();
     LoginPage.enableInputs();
+    LoginPage.updateSignupButton();
     Notifications.add("Please fill in all fields", 0);
+    return;
+  }
+
+  if (password.length > 25) {
+    LoginPage.hidePreloader();
+    LoginPage.enableInputs();
+    LoginPage.updateSignupButton();
+    Notifications.add("Password is too long", 0);
+    return;
+  }
+
+  if (
+    !email.match(
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    )
+  ) {
+    Notifications.add("Invalid email", 0, 3);
+    LoginPage.hidePreloader();
+    LoginPage.enableInputs();
+    LoginPage.updateSignupButton();
     return;
   }
 
   if (email !== emailVerify) {
     Notifications.add("Emails do not match", 0, 3);
     LoginPage.hidePreloader();
-    $(".pageLogin .button").removeClass("disabled");
-    $(".pageLogin input").prop("disabled", false);
+    LoginPage.enableInputs();
+    LoginPage.updateSignupButton();
     return;
   }
 
   if (password !== passwordVerify) {
     Notifications.add("Passwords do not match", 0, 3);
     LoginPage.hidePreloader();
-    $(".pageLogin .button").removeClass("disabled");
-    $(".pageLogin input").prop("disabled", false);
+    LoginPage.enableInputs();
+    LoginPage.updateSignupButton();
+    return;
+  }
+
+  // Force user to use a capital letter, number, special character when setting up an account and changing password
+  if (
+    window.location.hostname !== "localhost" &&
+    !Misc.isPasswordStrong(password)
+  ) {
+    Notifications.add(
+      "Password must contain at least one capital letter, number, a special character and at least 8 characters long",
+      0,
+      4
+    );
+    LoginPage.hidePreloader();
+    LoginPage.enableInputs();
+    LoginPage.updateSignupButton();
     return;
   }
 
@@ -555,6 +672,7 @@ async function signUp(): Promise<void> {
 
     const signInResponse = await Ape.users.create(
       nname,
+      captcha,
       email,
       createdAuthUser.user.uid
     );
@@ -565,7 +683,7 @@ async function signUp(): Promise<void> {
     await updateProfile(createdAuthUser.user, { displayName: nname });
     await sendEmailVerification(createdAuthUser.user);
     AllTimeStats.clear();
-    $("#menu .text-button.account .text").text(nname);
+    $("#menu .textButton.account .text").text(nname);
     $(".pageLogin .button").removeClass("disabled");
     $(".pageLogin input").prop("disabled", false);
     LoginPage.hidePreloader();
@@ -578,28 +696,35 @@ async function signUp(): Promise<void> {
       if (response.status === 200) {
         const result = TestLogic.notSignedInLastResult;
         DB.saveLocalResult(result);
-        DB.updateLocalStats({
-          time:
-            result.testDuration +
+        DB.updateLocalStats(
+          1,
+          result.testDuration +
             result.incompleteTestSeconds -
-            result.afkDuration,
-          started: 1,
-        });
+            result.afkDuration
+        );
       }
     }
     Notifications.add("Account created", 1, 3);
   } catch (e) {
     //make sure to do clean up here
     if (createdAuthUser) {
-      await Ape.users.delete();
-      await createdAuthUser.user.delete();
+      try {
+        await Ape.users.delete();
+      } catch (e) {
+        // account might already be deleted
+      }
+      try {
+        await createdAuthUser.user.delete();
+      } catch (e) {
+        // account might already be deleted
+      }
     }
     console.log(e);
     const message = Misc.createErrorMessage(e, "Failed to create account");
     Notifications.add(message, -1);
     LoginPage.hidePreloader();
-    $(".pageLogin .button").removeClass("disabled");
-    $(".pageLogin input").prop("disabled", false);
+    LoginPage.enableInputs();
+    LoginPage.updateSignupButton();
     signOut();
     return;
   }
@@ -609,17 +734,7 @@ $(".pageLogin #forgotPasswordButton").on("click", () => {
   const emailField =
     ($(".pageLogin .login input")[0] as HTMLInputElement).value || "";
   const email = prompt("Email address", emailField);
-  if (email) {
-    sendPasswordResetEmail(Auth, email)
-      .then(function () {
-        // Email sent.
-        Notifications.add("Email sent", 1, 2);
-      })
-      .catch(function (error) {
-        // An error happened.
-        Notifications.add(error.message, -1);
-      });
-  }
+  forgotPassword(email);
 });
 
 $(".pageLogin .login input").keyup((e) => {
@@ -644,8 +759,16 @@ $(".pageLogin .login .button.signInWithGoogle").on("click", () => {
 // signInWithGitHub();
 // });
 
-$(".signOut").on("click", () => {
-  signOut();
+$("#top .signInOut").on("click", () => {
+  if (Auth === undefined) {
+    Notifications.add("Authentication uninitialized", -1, 3);
+    return;
+  }
+  if (Auth.currentUser) {
+    signOut();
+  } else {
+    navigate("/login");
+  }
 });
 
 $(".pageLogin .register input").keyup((e) => {
@@ -661,13 +784,17 @@ $(".pageLogin .register .button").on("click", () => {
 });
 
 $(".pageSettings #addGoogleAuth").on("click", async () => {
+  if (!ConnectionState.get()) {
+    Notifications.add("You are offline", 0, 2);
+    return;
+  }
   addGoogleAuth();
 });
 
-$(".pageSettings #removeGoogleAuth").on("click", () => {
-  removeGoogleAuth();
-});
-
-$(document).on("click", ".pageAccount .sendVerificationEmail", () => {
+$(".pageAccount").on("click", ".sendVerificationEmail", () => {
+  if (!ConnectionState.get()) {
+    Notifications.add("You are offline", 0, 2);
+    return;
+  }
   sendVerificationEmail();
 });

@@ -1,14 +1,13 @@
 import axios from "axios";
+import { Section } from "../utils/misc";
 
 const bannedChars = ["—", "_", " "];
 const maxWords = 100;
 const apiURL = "https://poetrydb.org/random";
 
-export class Poem {
-  public title: string;
-  public author: string;
-  public words: string[];
+export class Poem extends Section {
   constructor(title: string, author: string, words: string[]) {
+    super(title, author, words);
     this.title = title;
     this.author = author;
     this.words = words;
@@ -45,12 +44,11 @@ interface PoemObject {
   author: string;
 }
 
-export async function getPoem(): Promise<Poem | undefined> {
+export async function getPoem(): Promise<Section | false> {
   console.log("Getting poem");
 
-  const response = await axios.get(apiURL);
-
   try {
+    const response = await axios.get(apiURL);
     const poemObj: PoemObject = response.data[0];
 
     const words: string[] = [];
@@ -64,7 +62,6 @@ export async function getPoem(): Promise<Poem | undefined> {
     return new Poem(poemObj.title, poemObj.author, words);
   } catch (e) {
     console.log(e);
+    return false;
   }
-
-  return;
 }

@@ -16,18 +16,27 @@
   <!-- <div class="sectionGroupTitle">quick navigation</div> -->
   <div class="settingsGroup quickNav">
     <div class="links">
-      <a class="text-button" href="#group_account">account</a>
-      <a class="text-button" href="#group_behavior">behavior</a>
-      <a class="text-button" href="#group_input">input</a>
-      <a class="text-button" href="#group_sound">sound</a>
-      <a class="text-button" href="#group_caret">caret</a>
-      <a class="text-button" href="#group_appearance">appearance</a>
-      <a class="text-button" href="#group_theme">theme</a>
-      <a class="text-button" href="#group_hideElements">hide elements</a>
-      <a class="text-button" href="#group_dangerZone">danger zone</a>
+      <a class="textButton" href="#group_account">account</a>
+      <a class="textButton" href="#group_behavior">behavior</a>
+      <a class="textButton" href="#group_input">input</a>
+      <a class="textButton" href="#group_sound">sound</a>
+      <a class="textButton" href="#group_caret">caret</a>
+      <a class="textButton" href="#group_appearance">appearance</a>
+      <a class="textButton" href="#group_theme">theme</a>
+      <a class="textButton" href="#group_hideElements">hide elements</a>
+      <a class="textButton" href="#group_dangerZone">danger zone</a>
     </div>
   </div>
-  <div id="ad_settings0" class="hidden"></div>
+
+  <div id="ad-settings-1-wrapper" class="ad advertisement ad-h">
+    <div class="icon"><i class="fas fa-ad"></i></div>
+    <div id="ad-settings-1"></div>
+  </div>
+  <div id="ad-settings-1-small-wrapper" class="ad advertisement ad-h-s">
+    <div class="icon small"><i class="fas fa-ad"></i></div>
+    <div id="ad-settings-1-small"></div>
+  </div>
+
   <div id="group_account" class="sectionGroupTitle hidden" group="account">
     account
     <i class="fas fa-chevron-down"></i>
@@ -44,22 +53,25 @@
         give you a role.
       </div>
       <div class="buttons">
-        <a
-          class="button"
-          href="https://discord.com/api/oauth2/authorize?client_id=798272335035498557&redirect_uri=https%3A%2F%2Fmonkeytype.com%2Fverify&response_type=token&scope=identify"
-          style="text-decoration: none"
-        >
-          Link with Discord
-        </a>
+        <div class="button getLinkAndGoToOauth">Link with Discord</div>
       </div>
       <div class="info hidden">
         <div>
           <i class="fas fa-check"></i>
           Your accounts are linked!
         </div>
-        <div id="unlinkDiscordButton" class="text-button">
-          <i class="fas fa-unlink" aria-hidden="true"></i>
-          Unlink
+        <div id="discordButtonGroup">
+          <div
+            id="updateDiscordAvatarButton"
+            class="textButton getLinkAndGoToOauth"
+          >
+            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+            Update avatar
+          </div>
+          <div id="unlinkDiscordButton" class="textButton">
+            <i class="fas fa-unlink" aria-hidden="true"></i>
+            Unlink
+          </div>
         </div>
       </div>
     </div>
@@ -151,25 +163,43 @@
         </div>
       </div>
     </div>
-    <div class="section quickTab" id="quickTab">
-      <h1>quick tab mode</h1>
+    <div class="section quickRestart" id="quickRestart">
+      <h1>quick restart</h1>
       <div class="text">
         Press
         <key>tab</key>
-        to quickly restart the test, or to quickly jump to the test page. This
-        function disables tab navigation on the website.
+        or
+        <key>esc</key>
+        to quickly restart the test, or to quickly jump to the test page. Both
+        options disable tab navigation on most parts of the website. Using the
+        "esc" option will move opening the commandline to the
+        <key>tab</key>
+        key.
       </div>
       <div class="buttons">
         <div
           class="button"
-          quickTab="false"
+          quickRestart="off"
           tabindex="0"
           onclick="this.blur();"
         >
           off
         </div>
-        <div class="button" quickTab="true" tabindex="0" onclick="this.blur();">
-          on
+        <div
+          class="button"
+          quickRestart="tab"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          tab
+        </div>
+        <div
+          class="button"
+          quickRestart="esc"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          esc
         </div>
       </div>
     </div>
@@ -712,32 +742,11 @@
         </div>
       </div>
     </div>
-    <div class="section swapEscAndTab" section="">
-      <h1>swap esc and tab</h1>
-      <div class="text">Swap the behavior of tab and escape keys.</div>
-      <div class="buttons">
-        <div
-          class="button"
-          swapEscAndTab="false"
-          tabindex="0"
-          onclick="this.blur();"
-        >
-          off
-        </div>
-        <div
-          class="button"
-          swapEscAndTab="true"
-          tabindex="0"
-          onclick="this.blur();"
-        >
-          on
-        </div>
-      </div>
-    </div>
     <div class="section lazyMode">
       <h1>lazy mode</h1>
       <div class="text">
-        Replaces accented letters with their normal equivalents.
+        Replaces accents / diacritics / special characters with their normal
+        letter equivalents.
       </div>
       <div class="buttons">
         <div
@@ -766,7 +775,14 @@
     <div class="sectionSpacer"></div>
   </div>
 
-  <div id="ad_settings1" class="hidden"></div>
+  <div id="ad-settings-2-wrapper" class="ad advertisement ad-h">
+    <div class="icon"><i class="fas fa-ad"></i></div>
+    <div id="ad-settings-2"></div>
+  </div>
+  <div id="ad-settings-2-small-wrapper" class="ad advertisement ad-h-s">
+    <div class="icon small"><i class="fas fa-ad"></i></div>
+    <div id="ad-settings-2-small"></div>
+  </div>
 
   <div id="group_sound" class="sectionGroupTitle" group="sound">
     sound
@@ -870,6 +886,38 @@
           onclick="this.blur();"
         >
           hitmarker
+        </div>
+        <div
+          class="button"
+          playSoundOnClick="8"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          sine
+        </div>
+        <div
+          class="button"
+          playSoundOnClick="9"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          sawtooth
+        </div>
+        <div
+          class="button"
+          playSoundOnClick="10"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          square
+        </div>
+        <div
+          class="button"
+          playSoundOnClick="11"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          triangle
         </div>
       </div>
     </div>
@@ -980,7 +1028,8 @@
       <h1>pace caret</h1>
       <div class="text">
         Displays a second caret that moves at constant speed. The 'average'
-        option averages the speed of last 10 results.
+        option averages the speed of last 10 results. The 'daily' option takes
+        the highest speed of the last 24 hours.
       </div>
       <div>
         <div class="inputAndButton">
@@ -1012,7 +1061,7 @@
             tabindex="0"
             onclick="this.blur();"
           >
-            average
+            avg
           </div>
           <div
             class="button"
@@ -1021,6 +1070,22 @@
             onclick="this.blur();"
           >
             pb
+          </div>
+          <div
+            class="button"
+            paceCaret="last"
+            tabindex="0"
+            onclick="this.blur();"
+          >
+            last
+          </div>
+          <div
+            class="button"
+            paceCaret="daily"
+            tabindex="0"
+            onclick="this.blur();"
+          >
+            daily
           </div>
           <div
             class="button"
@@ -1411,24 +1476,15 @@
     <div class="section fontSize">
       <h1>font size</h1>
       <div class="text">Change the font size of the test words.</div>
-      <div class="buttons">
-        <div class="button" fontsize="1" tabindex="0" onclick="this.blur();">
-          1
-        </div>
-        <div class="button" fontsize="125" tabindex="0" onclick="this.blur();">
-          1.25
-        </div>
-        <div class="button" fontsize="15" tabindex="0" onclick="this.blur();">
-          1.5
-        </div>
-        <div class="button" fontsize="2" tabindex="0" onclick="this.blur();">
-          2
-        </div>
-        <div class="button" fontsize="3" tabindex="0" onclick="this.blur();">
-          3
-        </div>
-        <div class="button" fontsize="4" tabindex="0" onclick="this.blur();">
-          4
+      <div class="inputAndButton">
+        <input
+          type="number"
+          placeholder="font size"
+          class="input"
+          tabindex="0"
+        />
+        <div class="button save" tabindex="0" onclick="this.blur();">
+          <i class="fas fa-save fa-fw"></i>
         </div>
       </div>
     </div>
@@ -1587,10 +1643,46 @@
         </div>
       </div>
     </div>
+    <div class="section keymapShowTopRow fullWidth">
+      <h1>keymap show top row</h1>
+      <div class="buttons">
+        <div
+          class="button"
+          keymapShowTopRow="always"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          always
+        </div>
+        <div
+          class="button"
+          keymapShowTopRow="layout"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          layout dependent
+        </div>
+        <div
+          class="button"
+          keymapShowTopRow="never"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          never
+        </div>
+      </div>
+    </div>
     <div class="sectionSpacer"></div>
   </div>
 
-  <div id="ad_settings2" class="hidden"></div>
+  <div id="ad-settings-3-wrapper" class="ad advertisement ad-h">
+    <div class="icon"><i class="fas fa-ad"></i></div>
+    <div id="ad-settings-3"></div>
+  </div>
+  <div id="ad-settings-3-small-wrapper" class="ad advertisement ad-h-s">
+    <div class="icon small"><i class="fas fa-ad"></i></div>
+    <div id="ad-settings-3-small"></div>
+  </div>
 
   <div id="group_theme" class="sectionGroupTitle" group="theme">
     theme
@@ -1719,12 +1811,6 @@
           <div class="title">opacity</div>
           <div class="value"></div>
           <input type="range" min="0" max="1" value="1" step="0.1" />
-        </div>
-        <div class="saveContainer">
-          <div class="save button" style="grid-column: 3">
-            <!-- <i class="fas fa-save fa-fw"></i> -->
-            save
-          </div>
         </div>
       </div>
     </div>
@@ -2299,24 +2385,27 @@
         </div>
       </div>
     </div>
-    <div class="section enableAds">
-      <h1>enable ads</h1>
+    <div class="section ads">
+      <h1>ads</h1>
       <div class="text">
-        If you wish to support me without directly donating you can enable ads
-        that will be visible at the bottom of the screen. Sellout mode also
-        shows ads on both sides of the screen.
+        You can disable or enable ads at any time. "Result" will show one ad on
+        the result page, "on" will add floating vertical banners, and "sellout"
+        will add multiple ads on every page.
         <br />
         <br />
         (changes will take effect after a refresh).
       </div>
       <div class="buttons">
-        <div class="button" enableAds="off" tabindex="0" onclick="this.blur();">
+        <div class="button" ads="off" tabindex="0" onclick="this.blur();">
           off
         </div>
-        <div class="button" enableAds="on" tabindex="0" onclick="this.blur();">
+        <div class="button" ads="result" tabindex="0" onclick="this.blur();">
+          result
+        </div>
+        <div class="button" ads="on" tabindex="0" onclick="this.blur();">
           on
         </div>
-        <div class="button" enableAds="max" tabindex="0" onclick="this.blur();">
+        <div class="button" ads="sellout" tabindex="0" onclick="this.blur();">
           sellout
         </div>
       </div>
@@ -2324,13 +2413,13 @@
     <div class="section apeKeys needsAccount hidden">
       <h1>ape keys</h1>
       <div class="text">
-        Generate Ape Keys to access certain API endpoints. Documentation is
-        available
-        <span style="display: inline-flex; margin-right: 0.5rem">
+        Generate Ape Keys to access certain API endpoints
+        <span style="display: inline-flex">
+          (
           <a href="https://api.monkeytype.com/documentation" target="_blank">
-            here
+            documentation
           </a>
-          .
+          ).&nbsp;
         </span>
         More endpoints will be added in the future.
       </div>
@@ -2352,43 +2441,7 @@
         change your preferences here.
       </div>
       <div class="buttons">
-        <div class="button danger" tabindex="0" onclick="this.blur();">
-          open
-        </div>
-      </div>
-    </div>
-    <div class="section resetSettings">
-      <h1>reset settings</h1>
-      <div class="text">
-        Resets settings to the default (but doesn't touch your tags). Warning:
-        you can't undo this action!
-      </div>
-      <div class="buttons">
-        <div
-          class="button danger"
-          id="resetSettingsButton"
-          tabindex="0"
-          onclick="this.blur();"
-        >
-          reset settings
-        </div>
-      </div>
-    </div>
-    <div class="section resetPersonalBests needsAccount hidden">
-      <h1>reset personal bests</h1>
-      <div class="text">
-        Resets all your personal bests (but doesn't delete any tests from your
-        history). Warning: you can't undo this action!
-      </div>
-      <div class="buttons">
-        <div
-          class="button danger"
-          id="resetPersonalBestsButton"
-          tabindex="0"
-          onclick="this.blur();"
-        >
-          reset personal bests
-        </div>
+        <div class="button" tabindex="0" onclick="this.blur();">open</div>
       </div>
     </div>
     <div class="section updateAccountName needsAccount hidden">
@@ -2459,6 +2512,54 @@
           onclick="this.blur();"
         >
           remove google authentication
+        </div>
+      </div>
+    </div>
+    <div class="section resetSettings">
+      <h1>reset settings</h1>
+      <div class="text">
+        Resets settings to the default (but doesn't touch your tags). Warning:
+        you can't undo this action!
+      </div>
+      <div class="buttons">
+        <div
+          class="button danger"
+          id="resetSettingsButton"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          reset settings
+        </div>
+      </div>
+    </div>
+    <div class="section resetPersonalBests needsAccount hidden">
+      <h1>reset personal bests</h1>
+      <div class="text">
+        Resets all your personal bests (but doesn't delete any tests from your
+        history). Warning: you can't undo this action!
+      </div>
+      <div class="buttons">
+        <div
+          class="button danger"
+          id="resetPersonalBestsButton"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          reset personal bests
+        </div>
+      </div>
+    </div>
+    <div class="section resetAccount needsAccount hidden">
+      <h1>reset account</h1>
+      <div class="text">Completely resets your account to a blank state.</div>
+      <div class="buttons">
+        <div
+          class="button danger"
+          id="resetAccount"
+          tabindex="0"
+          onclick="this.blur();"
+        >
+          reset account
         </div>
       </div>
     </div>

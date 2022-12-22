@@ -83,7 +83,10 @@ function calculateAcc(): number {
 
 function layoutfluid(): void {
   if (timerDebug) console.time("layoutfluid");
-  if (Config.funbox === "layoutfluid" && Config.mode === "time") {
+  if (
+    Config.funbox.split("#").includes("layoutfluid") &&
+    Config.mode === "time"
+  ) {
     const layouts = Config.customLayoutfluid
       ? Config.customLayoutfluid.split("#")
       : ["qwerty", "dvorak", "colemak"];
@@ -131,11 +134,7 @@ function checkIfFailed(
     TimerEvent.dispatch("fail", "min wpm");
     return;
   }
-  if (
-    Config.minAcc === "custom" &&
-    acc < Config.minAccCustom &&
-    TestWords.words.currentIndex > 3
-  ) {
+  if (Config.minAcc === "custom" && acc < Config.minAccCustom) {
     if (timer !== null) clearTimeout(timer);
     SlowTimer.clear();
     slowTimerCount = 0;
@@ -221,11 +220,9 @@ export async function start(): Promise<void> {
         if (slowTimerCount > 5) {
           //slow timer
 
-          if (window.navigator.userAgent.includes("Edg")) {
-            Notifications.add(
-              'This bad performance could be caused by "efficiency mode" on Microsoft Edge.'
-            );
-          }
+          Notifications.add(
+            'This could be caused by "efficiency mode" on Microsoft Edge.'
+          );
 
           Notifications.add(
             "Stopping the test due to bad performance. This would cause test calculations to be incorrect. If this happens a lot, please report this.",

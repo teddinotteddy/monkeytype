@@ -1,3 +1,54 @@
+<div id="registerCaptchaPopupWrapper" class="popupWrapper hidden">
+  <div id="registerCaptchaPopup">
+    <div class="g-recaptcha"></div>
+  </div>
+</div>
+
+<div id="alertsPopupWrapper" class="popupWrapper hidden">
+  <div id="alertsPopup">
+    <div class="button mobileClose">
+      <i class="fas fa-times"></i>
+      Close
+    </div>
+    <div class="scrollWrapper">
+      <div class="accountAlerts">
+        <div class="title">
+          <div class="left">
+            <i class="fas fa-inbox"></i>
+            Inbox
+          </div>
+          <div class="right"></div>
+        </div>
+        <div class="button claimAll hidden">
+          <i class="fas fa-fw fa-gift"></i>
+          Claim all
+        </div>
+        <div class="button deleteAll hidden">
+          <i class="fas fa-fw fa-trash"></i>
+          Delete all
+        </div>
+        <div class="list"><div class="nothing">Nothing to show</div></div>
+      </div>
+      <div class="separator accountSeparator"></div>
+      <div class="psas">
+        <div class="title">
+          <i class="fas fa-bullhorn"></i>
+          Announcements
+        </div>
+        <div class="list"><div class="nothing">Nothing to show</div></div>
+      </div>
+      <div class="separator"></div>
+      <div class="notificationHistory">
+        <div class="title">
+          <i class="fas fa-comment-alt"></i>
+          Notifications
+        </div>
+        <div class="list"><div class="nothing">Nothing to show</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="simplePopupWrapper" class="popupWrapper hidden">
   <div id="simplePopup" popupId=""></div>
 </div>
@@ -23,9 +74,8 @@
       </div>
       <div class="buttons">
         <div class="button active acceptAll">Accept all</div>
-        <div class="button openSettings">
-          <i class="fas far fa-cog"></i>
-        </div>
+        <div class="button rejectAll">Reject all</div>
+        <div class="button openSettings">More options</div>
       </div>
     </div>
     <div class="settings hidden">
@@ -64,14 +114,16 @@
           </div>
         </label>
       </div>
-      <div class="cookie">
+      <div class="cookie ads">
         <label class="checkbox">
           <div class="title">Advertising</div>
           <div class="description">
             Our advertising partner may use cookies to deliver ads that are more
-            relevant to you. If you enable ads you will receive another popup
-            where you can review how they use cookies.
+            relevant to you.
           </div>
+          <a class="text-button">
+            Click to change your preferences on ad related cookies
+          </a>
         </label>
       </div>
       <div class="button active acceptSelected">Accept selected</div>
@@ -218,6 +270,15 @@
   </div>
 </div>
 
+<div id="videoAdPopupWrapper" class="popupWrapper hidden">
+  <div id="videoAdPopup">
+    <div class="preloader">
+      <i class="fas fa-fw fa-spin fa-circle-notch"></i>
+    </div>
+    <div id="eg-video-player" class="video"></div>
+  </div>
+</div>
+
 <div id="pbTablesPopupWrapper" class="popupWrapper hidden">
   <div id="pbTablesPopup">
     <!-- <div class="title">All words personal bests</div> -->
@@ -337,7 +398,7 @@
       data-balloon-pos="up"
       style="display: grid"
     >
-      <div class="text-button submitButton">
+      <div class="textButton submitButton">
         <i class="fas fa-chevron-right"></i>
       </div>
     </span>
@@ -377,9 +438,18 @@
       <div class="title">saved texts</div>
       <div class="buttons"></div>
     </div>
-    <textarea class="textarea" placeholder="Custom text"></textarea>
+    <div class="textAreaWrapper" style="position: relative">
+      <div class="longCustomTextWarning">
+        <div class="textAndButton">
+          A long custom text is currently loaded. Editing the text will disable
+          progress tracking.
+          <div class="button">Got it</div>
+        </div>
+      </div>
+      <textarea class="textarea" placeholder="Custom text"></textarea>
+    </div>
     <div class="inputs">
-      <label class="checkbox">
+      <label class="checkbox randomWordsCheckbox">
         <input type="checkbox" />
         <div class="customTextCheckbox">
           <div class="check">
@@ -391,9 +461,9 @@
           Randomize the above words, and control how many words are generated.
         </span>
       </label>
-      <div class="randomInputFields hidden">
+      <div class="randomInputFields disabled">
         <label class="wordcount">
-          Word count
+          Words
           <input type="number" value="" min="1" max="10000" />
         </label>
         <div style="color: var(--sub-color)">or</div>
@@ -427,6 +497,25 @@
           randomize groups of words.
         </span>
       </label>
+      <label class="checkbox replaceNewlineWithSpace">
+        <input type="checkbox" />
+        <div class="customTextCheckbox">
+          <div class="check">
+            <i class="fas fa-fw fa-check"></i>
+          </div>
+        </div>
+        Replace new lines with spaces
+        <span>
+          Replace all new line characters with spaces. Can automatically adds
+          periods to the end of lines if you wish.
+        </span>
+      </label>
+      <div class="replaceNewLinesButtons">
+        <div class="buttonGroup">
+          <div class="button active noPeriods">no periods</div>
+          <div class="button periods">periods</div>
+        </div>
+      </div>
     </div>
     <div class="button apply">ok</div>
   </div>
@@ -435,6 +524,31 @@
   <div id="savedTextsPopup">
     <div class="title">Saved texts</div>
     <div class="list"></div>
+    <div class="title">Saved long texts</div>
+    <div class="listLong"></div>
+  </div>
+</div>
+<div id="saveCustomTextPopupWrapper" class="popupWrapper hidden">
+  <div id="saveCustomTextPopup">
+    <div class="title">Save custom text</div>
+    <input class="textName" type="text" placeholder="name" />
+    <div>
+      <label class="checkbox">
+        <input type="checkbox" class="isLongText" />
+        <div class="customTextCheckbox">
+          <div class="check">
+            <i class="fas fa-fw fa-check"></i>
+          </div>
+        </div>
+        Long text (book mode)
+        <span>
+          Disables editing this text but allows you to save progress by pressing
+          shift + enter or bailing out. You can then load this text again to
+          continue where you left off.
+        </span>
+      </label>
+    </div>
+    <div class="button save">save</div>
   </div>
 </div>
 <div id="wordFilterPopupWrapper" class="popupWrapper hidden">
@@ -474,31 +588,8 @@
   <div id="googleSignUpPopup">
     <div class="title">Account name</div>
     <div class="text">You need to choose a username before continuing</div>
-    <div class="inputAndIndicator">
-      <input type="text" placeholder="username" />
-      <div class="checkStatus">
-        <div
-          class="checking hidden"
-          data-balloon-length="large"
-          data-balloon-pos="up"
-        >
-          <i class="fas fa-fw fa-circle-notch fa-spin"></i>
-        </div>
-        <div class="available hidden" data-balloon-pos="up">
-          <i class="fas fa-fw fa-check"></i>
-        </div>
-        <div
-          class="unavailable hidden"
-          data-balloon-length="large"
-          data-balloon-pos="up"
-        >
-          <i class="fas fa-fw fa-times"></i>
-        </div>
-        <div class="taken hidden" data-balloon-pos="up">
-          <i class="fas fa-fw fa-user-friends"></i>
-        </div>
-      </div>
-    </div>
+    <input type="text" placeholder="username" />
+    <div class="captcha"></div>
     <div class="button disabled">Sign up</div>
   </div>
 </div>
@@ -589,10 +680,7 @@
     <input id="submitQuoteSource" class="" type="text" autocomplete="off" />
     <label>Language</label>
     <select name="language" id="submitQuoteLanguage"></select>
-    <div
-      class="g-recaptcha"
-      data-sitekey="6Lc-V8McAAAAAJ7s6LGNe7MBZnRiwbsbiWts87aj"
-    ></div>
+    <div class="g-recaptcha"></div>
     <div id="submitQuoteButton" class="button">Submit</div>
   </div>
 </div>
@@ -624,8 +712,8 @@
   <div id="quoteReportPopup" mode="">
     <div class="title">Report a Quote</div>
     <div class="text">
-      Please report quotes responsibly. Misuse may result in you losing access
-      to this feature.
+      Please report quotes responsibly. Please add comments in English only.
+      Misuse may result in you losing access to this feature.
     </div>
     <label>quote</label>
     <div class="quote"></div>
@@ -698,20 +786,25 @@
 <div id="leaderboardsWrapper" class="popupWrapper hidden">
   <div id="leaderboards">
     <div class="leaderboardsTop">
-      <div class="mainTitle">Leaderboards</div>
+      <div class="mainTitle">All-Time English Leaderboards</div>
       <div class="subTitle">Next update in: --:--</div>
-      <!-- <div class="buttons">
-            <div class="buttonGroup">
-              <div class="button active" board="time_15">time 15</div>
-              <div class="button" board="time_60">time 60</div>
-            </div>
-          </div> -->
+      <div class="textButton showYesterdayButton hidden">
+        <i class="fas fa-calendar-day"></i>
+        <div class="text">Show yesterday</div>
+      </div>
+      <div class="buttons">
+        <div class="buttonGroup timeRange">
+          <div class="button allTime">all-time</div>
+          <div class="button daily">daily</div>
+          <select class="languageSelect" disabled></select>
+        </div>
+      </div>
     </div>
     <div class="tables">
       <div class="titleAndTable">
         <div class="titleAndButtons">
           <div class="title">
-            English Time 15
+            Time 15
             <i
               class="hidden leftTableLoader fas fa-fw fa-spin fa-circle-notch"
             ></i>
@@ -743,7 +836,6 @@
                   <br />
                   <div class="sub">consistency</div>
                 </td>
-                <td class="alignRight" width="13%">test</td>
                 <td class="alignRight" width="22%">date</td>
               </tr>
             </thead>
@@ -755,7 +847,7 @@
       <div class="titleAndTable">
         <div class="titleAndButtons">
           <div class="title">
-            English Time 60
+            Time 60
             <i
               class="hidden rightTableLoader fas fa-fw fa-spin fa-circle-notch"
             ></i>
@@ -777,18 +869,17 @@
               <tr>
                 <td width="1%">#</td>
                 <td>name</td>
-                <td class="alignRight" width="15%">
+                <td class="alignRight" width="1%">
                   wpm
                   <br />
                   <div class="sub">accuracy</div>
                 </td>
-                <td class="alignRight" width="15%">
+                <td class="alignRight" width="1%">
                   raw
                   <br />
                   <div class="sub">consistency</div>
                 </td>
-                <td class="alignRight" width="13%">test</td>
-                <td class="alignRight" width="22%">date</td>
+                <td class="alignRight" width="110px">date</td>
               </tr>
             </thead>
             <tbody></tbody>
@@ -799,22 +890,8 @@
     </div>
   </div>
 </div>
-<div id="versionHistoryWrapper" class="hidden">
-  <div id="versionHistory">
-    <!-- <div class="tip">Click anywhere to dismiss</div> -->
-    <div class="releases">
-      <div class="release">
-        <div class="title">v1</div>
-        <div class="date">010101</div>
-        <div class="body">test</div>
-      </div>
-      <div class="release">
-        <div class="title">v2</div>
-        <div class="date">010101</div>
-        <div class="body">test</div>
-      </div>
-    </div>
-  </div>
+<div id="versionHistoryWrapper" class="popupWrapper hidden">
+  <div id="versionHistory"></div>
 </div>
 <div id="supportMeWrapper" class="popupWrapper hidden">
   <div id="supportMe">
@@ -826,8 +903,16 @@
     </div>
     <div class="buttons">
       <div class="button ads">
-        <div class="icon"><i class="fas fa-ad"></i></div>
+        <div class="icon"><i class="fas fa-fw fa-ad"></i></div>
         <div class="text">Enable Ads</div>
+      </div>
+      <div class="button watchVideoAd">
+        <div class="icon"><i class="fas fa-fw fa-ad"></i></div>
+        <div class="text">
+          Watch
+          <br />
+          a Video Ad
+        </div>
       </div>
       <a
         class="button"
@@ -835,7 +920,7 @@
         target="_blank"
         rel="noreferrer"
       >
-        <div class="icon"><i class="fas fa-donate"></i></div>
+        <div class="icon"><i class="fas fa-fw fa-donate"></i></div>
         <div class="text">Donate</div>
       </a>
       <a
@@ -844,7 +929,7 @@
         target="_blank"
         rel="noreferrer"
       >
-        <div class="icon"><i class="fab fa-patreon"></i></div>
+        <div class="icon"><i class="fab fa-fw fa-patreon"></i></div>
         <div class="text">
           Become
           <br />
@@ -857,17 +942,8 @@
         target="_blank"
         rel="noreferrer"
       >
-        <div class="icon"><i class="fas fa-tshirt"></i></div>
+        <div class="icon"><i class="fas fa-fw fa-tshirt"></i></div>
         <div class="text">Buy Merch</div>
-      </a>
-      <a
-        class="button"
-        href="https://monkeytype.com/das"
-        target="_blank"
-        rel="noreferrer"
-      >
-        <div class="icon"><i class="fas fa-keyboard"></i></div>
-        <div class="text">Buy a DAS Keyboard</div>
       </a>
     </div>
   </div>
@@ -975,5 +1051,56 @@
   </div>
   <div id="commandInput" class="hidden">
     <input type="text" class="input" placeholder="input" />
+  </div>
+</div>
+<div id="newResultFilterPresetPopupWrapper" class="popupWrapper hidden">
+  <div id="newResultFilterPresetPopup">
+    <div class="title">Add new filter preset</div>
+    <input type="text" value="new preset" />
+    <div class="button">add</div>
+  </div>
+</div>
+
+<div id="editProfilePopupWrapper" class="popupWrapper hidden">
+  <div id="editProfilePopup">
+    <div class="title">Edit Profile</div>
+    <div>
+      <label>avatar</label>
+      <div>
+        To update your avatar make sure your Discord account is linked, then go
+        to Settings > Account > Discord Integration and click "Update Avatar"
+      </div>
+    </div>
+    <div>
+      <label>bio</label>
+      <textarea class="bio" type="text" autocomplete="off"></textarea>
+    </div>
+    <div>
+      <label>keyboard</label>
+      <textarea class="keyboard" type="text" autocomplete="off"></textarea>
+    </div>
+    <div>
+      <label>github</label>
+      <div class="socialURL">
+        <p>https://github.com/</p>
+        <input class="github" type="text" value="" />
+      </div>
+    </div>
+    <div>
+      <label>twitter</label>
+      <div class="socialURL">
+        <p>https://twitter.com/</p>
+        <input class="twitter" type="text" value="" />
+      </div>
+    </div>
+    <div>
+      <label>website</label>
+      <input class="website" type="text" value="" />
+    </div>
+    <div>
+      <label>badge</label>
+      <div class="badgeSelectionContainer"></div>
+    </div>
+    <div class="button edit-profile-submit">save</div>
   </div>
 </div>

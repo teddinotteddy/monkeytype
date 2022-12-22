@@ -416,7 +416,6 @@
   ["optimize", "optimise"],
   ["romanize", "romanise"],
   ["vulcanize", "vulcanise"],
-  ["program", "programme"],
   ["plow", "plough"],
   ["memorize", "memorise"],
   ["sterilization", "sterilisation"],
@@ -583,9 +582,11 @@
   ["generalization", "generalisation"],
   ["mobilize", "mobilise"],
   ["armor", "armour"],
+  ["armored", "armoured"],
   ["labeling", "labelling"],
   ["endeavor", "endeavour"],
   ["civilize", "civilise"],
   ["civilized", "civilised"],
-  ["civilization", "civilisation"]
+  ["civilization", "civilisation"],
+  ["parlor", "parlour"]
 ]

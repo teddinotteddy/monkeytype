@@ -2,28 +2,35 @@ import Config from "../config";
 import * as ThemeColors from "./theme-colors";
 import * as SlowTimer from "../states/slow-timer";
 import * as ConfigEvent from "../observables/config-event";
+import * as KeymapEvent from "../observables/keymap-event";
 import * as Misc from "../utils/misc";
+import * as Hangul from "hangul-js";
+import * as Notifications from "../elements/notifications";
+import * as ActivePage from "../states/active-page";
 
-export function highlightKey(currentKey: string): void {
+function highlightKey(currentKey: string): void {
   if (Config.mode === "zen") return;
   if (currentKey === "") currentKey = " ";
   try {
-    if ($(".active-key") != undefined) {
-      $(".active-key").removeClass("active-key");
+    if ($(".activeKey") != undefined) {
+      $(".activeKey").removeClass("activeKey");
     }
 
     let highlightKey;
+    if (Config.language.startsWith("korean")) {
+      currentKey = Hangul.disassemble(currentKey)[0];
+    }
     if (currentKey == " ") {
-      highlightKey = "#keymap .key-space, #keymap .key-split-space";
+      highlightKey = "#keymap .keySpace, #keymap .keySplitSpace";
     } else if (currentKey == '"') {
-      highlightKey = `#keymap .keymap-key[data-key*='${currentKey}']`;
+      highlightKey = `#keymap .keymapKey[data-key*='${currentKey}']`;
     } else {
-      highlightKey = `#keymap .keymap-key[data-key*="${currentKey}"]`;
+      highlightKey = `#keymap .keymapKey[data-key*="${currentKey}"]`;
     }
 
     // console.log("highlighting", highlightKey);
 
-    $(highlightKey).addClass("active-key");
+    $(highlightKey).addClass("activeKey");
   } catch (e) {
     if (e instanceof Error) {
       console.log("could not update highlighted keymap key: " + e.message);
@@ -31,55 +38,52 @@ export function highlightKey(currentKey: string): void {
   }
 }
 
-export async function flashKey(key: string, correct: boolean): Promise<void> {
+async function flashKey(key: string, correct?: boolean): Promise<void> {
   if (key == undefined) return;
-
+  //console.log("key", key);
   if (key == " ") {
-    key = "#keymap .key-space, #keymap .key-split-space";
+    key = "#keymap .keySpace, #keymap .keySplitSpace";
   } else if (key == '"') {
-    key = `#keymap .keymap-key[data-key*='${key}']`;
+    key = `#keymap .keymapKey[data-key*='${key}']`;
   } else {
-    key = `#keymap .keymap-key[data-key*="${key}"]`;
+    key = `#keymap .keymapKey[data-key*="${key}"]`;
   }
 
   const themecolors = await ThemeColors.getAll();
 
   try {
+    let css = {
+      color: themecolors.bg,
+      backgroundColor: themecolors.sub,
+      borderColor: themecolors.sub,
+    };
+
     if (correct || Config.blindMode) {
-      $(key)
-        .stop(true, true)
-        .css({
-          color: themecolors.bg,
-          backgroundColor: themecolors.main,
-          borderColor: themecolors.main,
-        })
-        .animate(
-          {
-            color: themecolors.sub,
-            backgroundColor: "transparent",
-            borderColor: themecolors.sub,
-          },
-          SlowTimer.get() ? 0 : 500,
-          "easeOutExpo"
-        );
+      css = {
+        color: themecolors.bg,
+        backgroundColor: themecolors.main,
+        borderColor: themecolors.main,
+      };
     } else {
-      $(key)
-        .stop(true, true)
-        .css({
-          color: themecolors.bg,
-          backgroundColor: themecolors.error,
-          borderColor: themecolors.error,
-        })
-        .animate(
-          {
-            color: themecolors.sub,
-            backgroundColor: "transparent",
-            borderColor: themecolors.sub,
-          },
-          SlowTimer.get() ? 0 : 500,
-          "easeOutExpo"
-        );
+      css = {
+        color: themecolors.bg,
+        backgroundColor: themecolors.error,
+        borderColor: themecolors.error,
+      };
     }
+
+    $(key)
+      .stop(true, true)
+      .css(css)
+      .animate(
+        {
+          color: themecolors.sub,
+          backgroundColor: "transparent",
+          borderColor: themecolors.sub,
+        },
+        SlowTimer.get() ? 0 : 500,
+        "easeOutExpo"
+      );
   } catch (e) {}
 }
 
@@ -94,9 +98,21 @@ export function show(): void {
 export async function refresh(
   layoutName: string = Config.layout
 ): Promise<void> {
+  if (Config.keymapMode === "off") return;
+  if (ActivePage.get() !== "test") return;
   if (!layoutName) return;
   try {
-    const layouts = await Misc.getLayoutsList();
+    let layouts;
+    try {
+      layouts = await Misc.getLayoutsList();
+    } catch (e) {
+      Notifications.add(
+        Misc.createErrorMessage(e, "Failed to refresh keymap"),
+        -1
+      );
+      return;
+    }
+
     let lts = layouts[layoutName]; //layout to show
     let layoutString = layoutName;
     if (Config.keymapLayout === "overrideSync") {
@@ -112,7 +128,10 @@ export async function refresh(
       layoutString = Config.keymapLayout;
     }
 
-    const showTopRow = (lts as typeof layouts["qwerty"]).keymapShowTopRow;
+    const showTopRow =
+      Config.keymapShowTopRow === "always" ||
+      ((lts as typeof layouts["qwerty"]).keymapShowTopRow &&
+        Config.keymapShowTopRow !== "never");
 
     const isMatrix =
       Config.keymapStyle === "matrix" || Config.keymapStyle === "split_matrix";
@@ -121,7 +140,13 @@ export async function refresh(
 
     (Object.keys(lts.keys) as (keyof MonkeyTypes.Keys)[]).forEach(
       (row, index) => {
-        const rowKeys = lts.keys[row];
+        let rowKeys = lts.keys[row];
+        if (
+          row === "row1" &&
+          (isMatrix || Config.keymapStyle === "staggered")
+        ) {
+          rowKeys = rowKeys.slice(1);
+        }
         let rowElement = "";
         if (row === "row1" && !showTopRow) {
           return;
@@ -142,11 +167,11 @@ export async function refresh(
             letterStyle = `style="display: none;"`;
           }
           rowElement += "<div></div>";
-          rowElement += `<div class="keymap-key key-space">
+          rowElement += `<div class="keymapKey keySpace">
           <div class="letter" ${letterStyle}>${layoutDisplay}</div>
         </div>`;
-          rowElement += `<div class="keymap-split-spacer"></div>`;
-          rowElement += `<div class="keymap-key key-split-space">
+          rowElement += `<div class="keymapSplitSpacer"></div>`;
+          rowElement += `<div class="keymapKey keySplitSpace">
           <div class="letter"></div>
         </div>`;
         } else {
@@ -168,7 +193,17 @@ export async function refresh(
             } else if (Config.keymapLegendStyle === "uppercase") {
               keyDisplay = keyDisplay.toUpperCase();
             }
-            const keyElement = `<div class="keymap-key" data-key="${key.replace(
+            let hide = "";
+            if (
+              row === "row1" &&
+              i === 0 &&
+              !isMatrix &&
+              Config.keymapStyle !== "staggered"
+            ) {
+              hide = ` invisible`;
+            }
+
+            const keyElement = `<div class="keymapKey${hide}" data-key="${key.replace(
               '"',
               "&quot;"
             )}">
@@ -189,11 +224,19 @@ export async function refresh(
                 lts.type === "iso"
               ) {
                 if (i === 6) {
-                  splitSpacer += `<div class="keymap-split-spacer"></div>`;
+                  splitSpacer += `<div class="keymapSplitSpacer"></div>`;
+                }
+              } else if (
+                row === "row1" &&
+                (Config.keymapStyle === "split" ||
+                  Config.keymapStyle === "alice")
+              ) {
+                if (i === 7) {
+                  splitSpacer += `<div class="keymapSplitSpacer"></div>`;
                 }
               } else {
                 if (i === 5) {
-                  splitSpacer += `<div class="keymap-split-spacer"></div>`;
+                  splitSpacer += `<div class="keymapSplitSpacer"></div>`;
                 }
               }
             }
@@ -203,7 +246,7 @@ export async function refresh(
                 (lts.type === "iso" && i === 6) ||
                 (lts.type !== "iso" && i === 5)
               ) {
-                splitSpacer += `<div class="extra-key"><span class="letter"></span></div>`;
+                splitSpacer += `<div class="extraKey"><span class="letter"></span></div>`;
               }
             }
 
@@ -237,5 +280,21 @@ ConfigEvent.subscribe((eventKey) => {
   if (eventKey === "layout" && Config.keymapLayout === "overrideSync") {
     refresh(Config.keymapLayout);
   }
-  if (eventKey === "keymapLayout" || eventKey === "keymapStyle") refresh();
+  if (
+    eventKey === "keymapLayout" ||
+    eventKey === "keymapStyle" ||
+    eventKey === "keymapShowTopRow" ||
+    eventKey === "keymapMode"
+  ) {
+    refresh();
+  }
+});
+
+KeymapEvent.subscribe((mode, key, correct) => {
+  if (mode === "highlight") {
+    highlightKey(key);
+  }
+  if (mode === "flash") {
+    flashKey(key, correct);
+  }
 });

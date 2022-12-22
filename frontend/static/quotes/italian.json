@@ -38,9 +38,9 @@
       "id": 5
     },
     {
-      "text": "E' molto semplice: non vedo bene che col cuore. L'essenziale è invisibile agli occhi.",
+      "text": "È molto semplice: non vedo bene che col cuore. L'essenziale è invisibile agli occhi.",
       "source": "Antoine De Saint-Exupéry - Little Prince",
-      "length": 85,
+      "length": 84,
       "id": 6
     },
     {
@@ -606,6 +606,42 @@
       "source": "Gustave Flaubert",
       "length": 138,
       "id": 100
+    },
+    {
+      "text": "M'inganneranno, forse, la vecchiezza e il timore, ma sospetto che la specie umana - l'unica - stia per estinguersi, e che la Biblioteca perdurerà: illuminata, solitaria, infinita, perfettamente immobile, armata di volumi preziosi, inutile, incorruttibile, segreta.",
+      "source": "Jorge Luis Borges, The Library of Babel",
+      "length": 264,
+      "id": 101
+    },
+    {
+      "text": "Andai nei boschi perché desideravo vivere con saggezza, affrontando solo i fatti essenziali della vita, per vedere se non fossi riuscito a imparare quanto essa aveva da insegnarmi e per non dover scoprire in punto di morte di non aver vissuto.",
+      "source": "Henry David Thoreau, Walden",
+      "length": 243,
+      "id": 102
+    },
+    {
+      "text": "Carpe diem... Cogliete l'attimo, ragazzi... Rendete straordinaria la vostra vita!",
+      "source": "Robin Williams, L'attimo fuggente",
+      "length": 81,
+      "id": 103
+    },
+    {
+      "text": "Quando i gas velenosi non basteranno più, un uomo fatto come tutti gli altri, nel segreto di una stanza di questo mondo, inventerà un esplosivo incomparabile, in confronto al quale gli esplosivi attualmente esistenti saranno considerati quali innocui giocattoli. Ed un altro uomo fatto anche lui come tutti gli altri, ma degli altri un po’ più ammalato, ruberà tale esplosivo e s’arrampicherà al centro della terra per porlo nel punto ove il suo effetto potrà essere il massimo. Ci sarà un’esplosione enorme che nessuno udrà e la terra ritornata alla forma di nebulosa errerà nei cieli priva di parassiti e di malattie.",
+      "source": "Italo Svevo, La Coscienza di Zeno",
+      "length": 619,
+      "id": 104
+    },
+    {
+      "text": "Se ni' mondo esistesse un po' di bene e ognun si considerasse suo fratello ci sarebbe meno pensieri e meno pene e il mondo ne sarebbe assai più bello.",
+      "source": "Pietro Pacciani, Processo",
+      "length": 150,
+      "id": 105
+    },
+    {
+      "text": "Una delle poche cose, anzi forse la sola ch'io sapessi di certo era questa: che mi chiamavo Mattia Pascal.",
+      "source": "Luigi Pirandello, Il fu Mattia Pascal",
+      "length": 106,
+      "id": 106
     }
   ]
 }

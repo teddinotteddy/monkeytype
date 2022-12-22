@@ -1,26 +1,23 @@
-@media only screen and (max-width: 1250px) {
+//1450px
+@media only screen and (max-width: 90.625rem) {
   #leaderboardsWrapper #leaderboards {
-    grid-template-rows: 1.5rem auto;
-    padding: 1rem;
-    gap: 1rem;
     .mainTitle {
       font-size: 2rem;
-      line-height: 2rem;
     }
     .title {
       font-size: 1rem;
     }
     .leaderboardsTop {
+      grid-template-columns: auto 1fr max-content;
       .buttonGroup {
-        gap: 0.1rem !important;
-
-        .button {
-          padding: 0.4rem !important;
-          font-size: 0.7rem !important;
-        }
+        grid-auto-flow: row;
+        gap: 0.5rem;
       }
     }
     .tables table {
+      .avatarNameBadge .badge .text {
+        display: none;
+      }
       tr td:first-child {
         padding-left: 0.25rem;
       }
@@ -32,12 +29,50 @@
       }
     }
   }
+}
+
+//1330px
+@media only screen and (max-width: 83.125rem) {
+  .ad.ad-v {
+    display: none;
+  }
+  #app {
+    grid-template-columns: auto;
+  }
+  #customTextPopupWrapper {
+    padding: 2rem;
+    #customTextPopup {
+      grid-template-columns: 1fr 1fr 2fr;
+      width: 100%;
+    }
+  }
+}
+
+//1250px
+@media only screen and (max-width: 78.125rem) {
+  #leaderboardsWrapper #leaderboards {
+    .tables table {
+      tr td:nth-child(5) {
+        display: none;
+      }
+    }
+  }
   #quoteSearchPopupWrapper #quoteSearchPopup #quoteSearchControlsWrapper {
     grid-template-columns: 1fr 1fr max-content;
   }
 }
 
-@media only screen and (max-width: 1050px) {
+//1050px
+@media only screen and (max-width: 65.625rem) {
+  .profile .pbsWords,
+  .profile .pbsTime {
+    font-size: 0.8rem;
+  }
+  .profile .details.bioAndKey {
+    .bioAndKeyboard .value {
+      font-size: 0.75rem;
+    }
+  }
   .pageSettings .section.fullWidth .buttons {
     grid-template-columns: 1fr 1fr 1fr;
   }
@@ -59,16 +94,54 @@
       }
     }
   }
-  #customTextPopup {
-    width: 80vw !important;
-
-    .wordfilter.button {
-      width: 50% !important;
+  #leaderboardsWrapper {
+    #leaderboards {
+      .leaderboardsTop {
+        flex-direction: column;
+        align-items: baseline;
+        grid-template-areas:
+          "title title"
+          "subtitle subtitle"
+          "yesterday yesterday"
+          "buttons buttons";
+        grid-template-columns: 1fr;
+        .buttons {
+          margin-top: 0.5rem;
+        }
+        .buttonGroup {
+          grid-auto-flow: column;
+        }
+        .showYesterdayButton {
+          margin-left: 0;
+        }
+      }
+      .tables {
+        grid-template-columns: unset;
+        table {
+          .avatarNameBadge .badge .text {
+            display: block;
+          }
+          tr td:last-child {
+            width: 30%;
+          }
+        }
+      }
+      .tables .rightTableWrapper,
+      .tables .leftTableWrapper {
+        height: calc(50vh - 10rem);
+      }
+      .tables table {
+        tr td:nth-child(5) {
+          display: table-cell;
+          width: auto;
+        }
+      }
     }
   }
 }
 
-@media only screen and (max-width: 1000px) {
+//1000px
+@media only screen and (max-width: 62.5rem) {
   #quoteRatePopup {
     width: 90vw !important;
   }
@@ -88,22 +161,115 @@
       }
     }
   }
-  #leaderboardsWrapper #leaderboards {
-    .tables table {
-      tr td:nth-child(5) {
-        display: none;
+}
+
+//900px
+@media only screen and (max-width: 56.25rem) {
+  #customTextPopupWrapper #customTextPopup {
+    grid-template-areas:
+      "topButtons topButtons topButtons"
+      "textArea textArea textArea"
+      "checkboxes checkboxes checkboxes"
+      "ok ok ok";
+  }
+  #testConfig {
+    .mode,
+    .time,
+    .wordCount,
+    .puncAndNum,
+    .customText,
+    .zen,
+    .quoteLength {
+      .textButton {
+        padding: 0.75rem 0.3rem 0.7rem 0.3rem;
+
+        &:first-child {
+          padding: 0.75rem 0.3rem 0.7rem 0.6rem;
+        }
+        &:last-child {
+          padding: 0.75rem 0.6rem 0.7rem 0.3rem;
+        }
+        &:only-child {
+          padding: 0.75rem 0.6rem 0.7rem 0.6rem;
+        }
       }
     }
   }
-}
-
-@media only screen and (max-width: 900px) {
-  // #leaderboards {
-  //   .mainTitle {
-  //     font-size: 1.5rem !important;
-  //     line-height: 1.5rem !important;
-  //   }
-  // }
+  .ad.ad-h {
+    display: none;
+  }
+  .ad.ad-h-s {
+    display: grid;
+  }
+  .profile .pbsWords,
+  .profile .pbsTime {
+    font-size: 1rem;
+  }
+  .profile {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "info"
+      "leaderboards"
+      "pbsTime"
+      "pbsWords";
+    .details.soc {
+      grid-template-columns: 1.25fr auto 1fr auto auto;
+      .typingStats {
+        grid-template-columns: 1fr;
+      }
+    }
+    .details.bioAndKey {
+      grid-template-columns: 1.25fr auto auto auto 1fr;
+      .typingStats {
+        grid-template-columns: 1fr;
+      }
+    }
+    .details.both {
+      grid-template-columns: 1.25fr auto 1.25fr auto;
+      grid-template-areas:
+        "avAndName sep2 bioAndKey bioAndKey"
+        "typingStats typingStats typingStats socials";
+      .sep1,
+      .sep3 {
+        display: none;
+      }
+      .typingStats {
+        grid-template-columns: 1fr 1fr 1fr;
+        width: 100%;
+      }
+      .socials {
+        justify-content: start;
+        .title {
+          display: block;
+        }
+        .value {
+          grid-auto-flow: column;
+        }
+      }
+    }
+    .details.none {
+      grid-template-columns: 1fr auto 1fr;
+      .typingStats {
+        grid-template-columns: 1fr;
+        // grid-template-areas:
+        //   "avAndName"
+        //   "typingStats";
+        // grid-template-columns: 1fr;
+        // .separator {
+        //   display: none;
+        // }
+      }
+    }
+    .leaderboardsPositions {
+      grid-template-areas: "title title" "t15 t60";
+    }
+  }
+  #leaderboards {
+    .mainTitle {
+      font-size: 1.5rem !important;
+    }
+  }
   #bannerCenter .banner .container {
     grid-template-columns: 1fr auto;
     .image {
@@ -114,7 +280,9 @@
       display: none;
     }
     .text {
-      margin-left: 2rem;
+      margin-left: 1.5rem;
+      text-align: left;
+      justify-self: start;
     }
   }
   .merchBanner {
@@ -149,49 +317,119 @@
       }
     }
   }
-}
-
-@media only screen and (max-width: 800px) {
   .pageSettings .settingsGroup.quickNav .links {
     grid-auto-flow: unset;
     grid-template-columns: 1fr 1fr 1fr;
     justify-items: center;
   }
-  #centerContent {
-    #top {
-      grid-template-areas:
-        "logo config"
-        "menu config";
-      grid-template-columns: auto auto;
-      .logo {
-        margin-bottom: 0;
+}
+
+//800px
+@media only screen and (max-width: 50rem) {
+  #testConfig {
+    .spacer {
+      display: none;
+    }
+    .row {
+      display: grid;
+      justify-items: center;
+      padding: 0.25rem 1rem;
+    }
+    .mode,
+    .time,
+    .wordCount,
+    .puncAndNum,
+    .customText,
+    .zen,
+    .quoteLength {
+      .textButton {
+        padding: 0.5rem 0.75rem 0.45rem 0.75rem;
+
+        &:first-child {
+          padding: 0.5rem 0.75rem 0.45rem 0.75rem;
+        }
+        &:last-child {
+          padding: 0.5rem 0.75rem 0.45rem 0.75rem;
+        }
+        &:only-child {
+          padding: 0.5rem 0.75rem 0.45rem 0.75rem;
+        }
       }
     }
+  }
 
+  #top {
+    .logo {
+      .text {
+        font-size: 1.9rem !important;
+      }
+      .bottom {
+        font-size: 1.9rem;
+        line-height: 1.9rem;
+        margin-top: 0;
+      }
+    }
     #menu {
-      gap: 0.5rem;
-      font-size: 0.8rem;
-      line-height: 0.8rem;
-      margin-top: -0.5rem;
-
-      .text-button {
-        padding: 0.25rem;
+      gap: 0.1rem;
+      font-size: 0.75rem;
+      .textButton {
+        // padding: 0.25rem;
+        // font-size: 0.8rem;
+        // line-height: 0.8rem;
+        &.account {
+          // margin-top: 0.05rem;
+          & > .text {
+            display: none;
+          }
+          .avatar {
+            // width: 1rem;
+            // height: 1rem;
+          }
+          .levelAndBar {
+            font-size: 1rem;
+            // line-height: 0.8rem;
+          }
+        }
       }
     }
+  }
+  #centerContent {
+    // #top {
+    //   grid-template-areas:
+    //     "logo config"
+    //     "menu config";
+    //   grid-template-columns: auto auto;
+    //   .logo {
+    //     margin-bottom: 0;
+    //   }
+    // }
+
+    // #menu {
+    //   gap: 0.5rem;
+    //   font-size: 0.8rem;
+    //   line-height: 0.8rem;
+    //   margin-top: -0.5rem;
+
+    //   .textButton {
+    //     padding: 0.25rem;
+    //   }
+    // }
   }
 
   #contactPopupWrapper #contactPopup .buttons {
     grid-template-columns: 1fr;
   }
 
-  .pageAbout .section {
-    .contributors,
-    .supporters {
-      grid-template-columns: 1fr 1fr 1fr;
-    }
-    .contactButtons,
-    .supportButtons {
-      grid-template-columns: 1fr 1fr;
+  .pageAbout {
+    .section {
+      .contributors,
+      .supporters {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .contactButtons,
+      .supportButtons {
+        grid-template-columns: 1fr 1fr;
+      }
     }
   }
 
@@ -208,24 +446,43 @@
     .section.themes .tabContent.customTheme {
     }
   }
-
-  #commandLine,
-  #commandLineInput {
-    width: 600px !important;
+  #customTextPopupWrapper #customTextPopup {
+    .buttonsTop {
+      grid-template-columns: 1fr;
+    }
   }
+}
+
+//750px
+@media only screen and (max-width: 46.875rem) {
   #leaderboardsWrapper #leaderboards {
     .tables table {
-      tr td:nth-child(4) {
+      tr td:nth-child(5) {
         display: none;
       }
-      tr td:last-child {
-        width: 30%;
+    }
+  }
+  .pageAbout {
+    .triplegroup {
+      grid-template-columns: 1fr;
+      .group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-items: center;
+        gap: 0rem 1rem;
+        .label {
+          grid-column: span 2;
+        }
       }
     }
   }
 }
 
-@media only screen and (max-width: 700px) {
+//700px
+@media only screen and (max-width: 43.75rem) {
+  .pageAccount .presetFilterButtons .buttons {
+    grid-template-columns: 1fr;
+  }
   .pageAccount {
     .triplegroup {
       grid-template-columns: 1fr 1fr;
@@ -251,10 +508,116 @@
         }
       }
     }
+    .group.estimatedWordsTyped {
+      flex-direction: column;
+      .title {
+        margin-right: unset;
+      }
+    }
+  }
+  .badge::after,
+  .badge::before {
+    display: none;
   }
 }
 
-@media only screen and (max-width: 650px) {
+//650px
+@media only screen and (max-width: 40.625rem) {
+  #leaderboardsWrapper #leaderboards {
+    width: 85vw;
+    .tables .rightTableWrapper,
+    .tables .leftTableWrapper {
+      height: calc(50vh - 10rem);
+    }
+    .tables {
+      grid-template-columns: unset;
+      table {
+        .avatarNameBadge .badge .text {
+          display: block;
+        }
+        tr td:nth-child(4) {
+          display: none;
+        }
+      }
+    }
+  }
+  .profile {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "info"
+      "leaderboards"
+      "pbsTime"
+      "pbsWords";
+    .details.none {
+      grid-template-areas:
+        "avAndName"
+        "typingStats";
+      grid-template-columns: 1fr;
+      .separator {
+        display: none;
+      }
+      .typingStats {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+    .details.bioAndKey {
+      grid-template-areas:
+        "avAndName bioAndKey"
+        "typingStats typingStats";
+      grid-template-columns: 1fr 1fr;
+      .separator {
+        display: none;
+      }
+      .typingStats {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+    .details.soc {
+      grid-template-areas:
+        "avAndName"
+        "typingStats"
+        "socials";
+      grid-template-columns: 1fr;
+      .separator {
+        display: none;
+      }
+      .typingStats {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .socials {
+        justify-content: start;
+        .title {
+          display: block;
+        }
+        .value {
+          grid-auto-flow: column;
+        }
+      }
+    }
+    .details.both {
+      grid-template-areas:
+        "avAndName bioAndKey"
+        "typingStats typingStats"
+        "socials socials";
+      grid-template-columns: 1fr 1fr;
+      .separator {
+        display: none;
+      }
+      .typingStats {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .socials {
+        justify-content: start;
+        .title {
+          display: block;
+        }
+        .value {
+          grid-auto-flow: column;
+        }
+      }
+    }
+  }
   #quoteRatePopup {
     .ratingStats {
       grid-template-columns: 1fr 1fr !important;
@@ -294,11 +657,12 @@
     .buttons {
       grid-template-columns: none !important;
       .button {
-        grid-template-columns: auto auto;
+        grid-template-columns: auto 1fr;
         align-items: center;
         .icon {
           font-size: 2rem !important;
           line-height: 2rem !important;
+          margin-left: 2rem;
         }
       }
     }
@@ -307,26 +671,10 @@
   .pageSettings .section.fullWidth .buttons {
     grid-template-columns: 1fr 1fr;
   }
-
-  #leaderboardsWrapper {
-    #leaderboards {
-      grid-template-rows: 2.5rem auto;
-      .leaderboardsTop {
-        flex-direction: column;
-        align-items: baseline;
-      }
-      .tables {
-        grid-template-columns: unset;
-      }
-      .tables .rightTableWrapper,
-      .tables .leftTableWrapper {
-        height: calc(50vh - 8rem);
-      }
-    }
-  }
 }
 
-@media only screen and (max-width: 600px) {
+//600px
+@media only screen and (max-width: 37.5rem) {
   .pageAbout .section .supporters,
   .pageAbout .section .contributors {
     grid-template-columns: 1fr 1fr;
@@ -355,23 +703,8 @@
       }
     }
   }
-  #commandLine,
-  #commandLineInput {
-    width: 500px !important;
-  }
-  #customTextPopupWrapper {
-    #customTextPopup {
-      .wordfilter.button {
-        width: 100% !important;
-        justify-self: auto;
-      }
-
-      .inputs {
-        display: flex !important;
-        flex-direction: column;
-        justify-content: flex-start;
-      }
-    }
+  #leaderboardsWrapper #leaderboards .leaderboardsTop .buttonGroup {
+    grid-auto-flow: row;
   }
 
   .pageAccount {
@@ -389,7 +722,51 @@
   }
 }
 
-@media only screen and (max-width: 550px) {
+//550px
+@media only screen and (max-width: 34.375rem) {
+  #commandLineWrapper {
+    padding: 5rem 1rem;
+  }
+  .profile .pbsWords,
+  .profile .pbsTime {
+    font-size: 0.9rem;
+  }
+  .profile {
+    .pbsWords,
+    .pbsTime {
+      grid-template-columns: 1fr 1fr;
+    }
+    .details.none .typingStats {
+      grid-template-columns: 1fr;
+    }
+    .details.bioAndKey {
+      grid-template-areas:
+        "avAndName"
+        "bioAndKey"
+        "typingStats";
+      grid-template-columns: 1fr;
+      .typingStats {
+        grid-template-columns: 1fr;
+      }
+    }
+    .details.both {
+      grid-template-areas:
+        "avAndName"
+        "bioAndKey"
+        "typingStats"
+        "socials";
+      grid-template-columns: 1fr;
+      .typingStats {
+        grid-template-columns: 1fr;
+      }
+    }
+    .leaderboardsPositions {
+      grid-template-areas: "title" "t15" "t60";
+    }
+  }
+  #testModesNotice {
+    font-size: 0.75rem;
+  }
   #cookiePopupWrapper {
     #cookiePopup,
     .extensionMessage {
@@ -402,7 +779,7 @@
     .row {
       height: 1.25rem;
     }
-    .keymap-key {
+    .keymapKey {
       width: 1.25rem;
       height: 1.25rem;
       border-radius: 0.3rem;
@@ -478,28 +855,14 @@
   }
 
   #top {
-    align-items: self-end;
     .logo {
-      .icon {
-        width: 1.5rem !important;
-      }
+      grid-template-columns: auto;
       .text {
-        font-size: 1.5rem !important;
-        margin-bottom: 0.3rem !important;
-      }
-      .bottom {
-        font-size: 1.75rem;
-        line-height: 1.75rem;
-        margin-top: 0;
-      }
-      .top {
         display: none;
       }
     }
     #menu {
-      .text-button {
-        padding: 0;
-      }
+      font-size: 1rem;
     }
   }
   #bottom {
@@ -520,7 +883,7 @@
   }
   #centerContent {
     #top {
-      grid-template-columns: 1fr auto;
+      // grid-template-columns: 1fr auto;
       .desktopConfig {
         display: none;
       }
@@ -528,6 +891,7 @@
         display: block;
       }
     }
+    gap: 1rem;
     padding: 1rem;
   }
   #middle {
@@ -550,32 +914,40 @@
       }
     }
   }
-  #commandLine,
-  #commandLineInput {
-    width: 400px !important;
+}
+
+//450px
+@media only screen and (max-width: 28.125rem) {
+  #testConfig {
+    display: none;
   }
-  #leaderboardsWrapper #leaderboards {
-    width: 85vw;
-    .tables .rightTableWrapper,
-    .tables .leftTableWrapper {
-      height: calc(50vh - 7rem);
+
+  #mobileTestConfig {
+    display: block;
+  }
+  #alertsPopupWrapper {
+    #alertsPopup {
+      border-radius: 0;
+      width: 100%;
+      .mobileClose {
+        display: block;
+      }
     }
   }
 }
 
-@media only screen and (max-width: 400px) {
-  #top .logo .bottom {
-    font-size: 1.5rem;
-    line-height: 1.5rem;
-    margin-top: 0;
-  }
-
+//400px
+@media only screen and (max-width: 25rem) {
   #top .config {
     grid-gap: 0.25rem;
     .group .buttons {
       font-size: 0.65rem;
       line-height: 0.65rem;
     }
+  }
+
+  #top #menu {
+    font-size: 0.75rem;
   }
 
   #bottom {
@@ -596,10 +968,6 @@
     }
   }
 
-  #commandLine,
-  #commandLineInput {
-    width: 300px !important;
-  }
   #leaderboardsWrapper #leaderboards {
     .tables .titleAndTable .titleAndButtons {
       grid-template-columns: unset;
@@ -627,12 +995,43 @@
   }
 }
 
-@media only screen and (max-width: 350px) {
+//350px
+@media only screen and (max-width: 21.875rem) {
+  .ad.ad-h-s {
+    display: none;
+  }
   #keymap {
     display: none !important;
   }
   .pageLogin .side input {
     width: 90vw;
+  }
+  .page404 {
+    .content {
+      width: 100%;
+      .image {
+        width: 100%;
+      }
+      .big {
+        font-size: 7rem;
+        line-height: 7rem;
+      }
+    }
+  }
+}
+
+//800px
+@media (pointer: coarse) and (max-width: 50rem) {
+  #testConfig {
+    display: none;
+  }
+
+  #mobileTestConfig {
+    display: block;
+  }
+
+  #restartTestButton {
+    display: block !important;
   }
 }
 

@@ -1,12 +1,13 @@
 import { activateAnalytics } from "../controllers/analytics-controller";
 import { focusWords } from "../test/test-ui";
+import * as Notifications from "../elements/notifications";
 
 let visible = false;
 
-type Accepted = {
+interface Accepted {
   security: boolean;
   analytics: boolean;
-};
+}
 
 function getAcceptedObject(): Accepted | null {
   const acceptedCookies = localStorage.getItem("acceptedCookies");
@@ -29,10 +30,7 @@ export function check(): void {
 }
 
 export function show(): void {
-  if (
-    $("#cookiePopupWrapper")[0] === undefined ||
-    $("#cookiePopupWrapper").outerHeight(true) === 0
-  ) {
+  if ($("#cookiePopupWrapper")[0] === undefined) {
     //removed by cookie popup blocking extension
     visible = false;
     return;
@@ -43,7 +41,14 @@ export function show(): void {
       .css("opacity", 0)
       .removeClass("hidden")
       .animate({ opacity: 1 }, 100, () => {
-        visible = true;
+        if (
+          $("#cookiePopupWrapper").is(":visible") === false ||
+          $("#cookiePopupWrapper").outerHeight(true) === 0
+        ) {
+          visible = false;
+        } else {
+          visible = true;
+        }
       });
   }
 }
@@ -72,6 +77,18 @@ export function showSettings(): void {
   $("#cookiePopup .settings").removeClass("hidden");
 }
 
+function verifyVisible(): void {
+  if (!visible) return;
+  if (
+    $("#cookiePopupWrapper")[0] === undefined ||
+    $("#cookiePopupWrapper").is(":visible") === false ||
+    $("#cookiePopupWrapper").outerHeight(true) === 0
+  ) {
+    //removed by cookie popup blocking extension
+    visible = false;
+  }
+}
+
 $("#cookiePopup .acceptAll").on("click", () => {
   const accepted = {
     security: true,
@@ -79,6 +96,15 @@ $("#cookiePopup .acceptAll").on("click", () => {
   };
   setAcceptedObject(accepted);
   activateAnalytics();
+  hide();
+});
+
+$("#cookiePopup .rejectAll").on("click", () => {
+  const accepted = {
+    security: true,
+    analytics: false,
+  };
+  setAcceptedObject(accepted);
   hide();
 });
 
@@ -101,7 +127,23 @@ $("#cookiePopup .openSettings").on("click", () => {
 });
 
 $(document).on("keypress", (e) => {
+  verifyVisible();
   if (visible) {
     e.preventDefault();
+  }
+});
+
+$("#cookiePopup .cookie.ads .text-button").on("click", () => {
+  try {
+    //@ts-ignore
+    window.__tcfapi("displayConsentUi", 2, function () {
+      //
+    });
+  } catch (e) {
+    console.error("Failed to open ad consent UI");
+    Notifications.add(
+      "Failed to open Ad consent popup. Do you have an ad or cookie popup blocker enabled?",
+      -1
+    );
   }
 });
